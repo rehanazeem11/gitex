@@ -3,6 +3,7 @@
 from . import config
 from .models import (
     Behaviour,
+    Condition,
     ContextFlag,
     DayLog,
     DayOutcome,
@@ -74,6 +75,8 @@ def starting_movement_tier(profile: UserProfile, screening: ScreeningResult) -> 
     tier = next(t for max_days, t in config.START_TIER_BY_ACTIVE_DAYS if days <= max_days)
     if profile.basics.age_years >= config.SENIOR_AGE:
         tier = min(tier, config.SENIOR_START_TIER)
+    if Condition.recovering_from_illness_or_injury in profile.conditions.managing:
+        tier = config.MIN_TIER  # starting level only; steps up as usual from there
     body = profile.body
     if body and body.height_cm and body.weight_kg:
         bmi = body.weight_kg / (body.height_cm / 100) ** 2  # internal only, never shown
@@ -88,7 +91,9 @@ def initial_habit_strength(profile: UserProfile, behaviour: Behaviour) -> float:
     b = profile.baseline
     if behaviour == Behaviour.movement:
         return config.HABIT_START_SCALE * b.active_days_per_week / 7
-    return config.HABIT_START_SCALE * (b.sleep_quality_self - 1) / 4
+    if behaviour == Behaviour.sleep:
+        return config.HABIT_START_SCALE * (b.sleep_quality_self - 1) / 4
+    return config.NEW_BEHAVIOUR_H0
 
 
 def initial_state(profile: UserProfile, screening: ScreeningResult) -> UserState:
@@ -98,6 +103,9 @@ def initial_state(profile: UserProfile, screening: ScreeningResult) -> UserState
         tiers[Behaviour.movement] = starting_movement_tier(profile, screening)
     if Behaviour.sleep in goals:
         tiers[Behaviour.sleep] = config.SLEEP_START_TIER
+    for b in (Behaviour.nutrition, Behaviour.smoking, Behaviour.recovery):
+        if b in goals:
+            tiers[b] = config.NEW_BEHAVIOUR_START_TIER
     flags = {ContextFlag.shift_pattern} if profile.basics.schedule_type == ScheduleType.shift else set()
     return UserState(
         user_id=profile.user_id,

@@ -753,6 +753,126 @@ The persistence results fit Rebound asking for more than a static easy plan (lap
 | Engagement inputs (§6.1) | completions, check-in responses and app opens | action outcomes only |
 | Actions per day (§2) | one | one per goal |
 
+## Personal plan builder (Task 05 Part A)
+
+| Choice | Value | Why |
+|---|---|---|
+| "Anything you're managing?" | optional chips: diabetes, high blood pressure, back or joint pain, stress, recovering from illness or injury; own consent group `conditions` (sensitive table, withdrawable, deleted on withdrawal, never in employer views). Pregnancy and smoking come from `screening.pregnant` and `history.smoking_status` | Collect only what changes the plan (§2.4); no free-text medical history. |
+| Chips that match a health-check question | high blood pressure → Q1 rules, back or joint pain → Q6 rules: tier-2 movement cap, that question's contraindications (no home workouts for joints), "check with your doctor", even if the question was answered "no" | Reuses rules we already justify instead of inventing new ones. A chip can only tighten, never loosen (tested over every combination). |
+| Recovering from illness or injury | movement starts at tier 1 (starting level only; steps up as usual) | Gentle return. |
+| Queued behaviours | order: recovery (recovering, or stress) → nutrition (diabetes) → smoking (current smoker); internal only until Part B gives them actions | Rest before effort; then what the person is managing. |
+| Active behaviours | at most 3 (`MAX_ACTIVE_BEHAVIOURS`); in Part A the goals (movement, sleep) | Burden cap (Task 05 B5). |
+| Reasons | plan choices only, never health outcomes; at most 3 shown (safety first), each ≤ 12 English words; full list behind "See why". A test bans outcome claims ("lower your blood pressure", "cure", "weight", …) | No information dumping; no medical claims (§2.5). |
+| Simulator | personas give no condition answers, so every persona's plan and actions are unchanged; checked by a same-seed re-run against run_011 | Keeps the reported results valid without a re-run. |
+
+**When Part B merges nutrition, smoking and recovery into `Behaviour`:** the lapse-risk features
+(`engine/rebound_engine/risk/features.py`, which loops over `Behaviour`) must stay limited to movement and sleep, so
+the frozen risk_001 model still loads; otherwise the model must be retrained and the model card updated. That's why
+Part A keeps them in a separate `PlanBehaviour` enum.
+
+## Context the app works out by itself (Task 05 Part A2)
+
+Only when the engine is given a calendar (the API does). `Engine()` without one, as the simulator uses it, behaves
+exactly as before: explicit flags only (checked by a same-seed re-run against run_011). Explicit flags (demo
+`advance` scenarios, "I'm OK now") win; the calendar adds flags and never removes one.
+
+| Choice | Value | Why / source |
+|---|---|---|
+| Ramadan dates | 1447: 18 Feb–19 Mar 2026; 1448: 8 Feb–8 Mar 2027; 1449: 28 Jan–25 Feb 2028 (Eid al-Fitr the day after) | Pre-computed Umm al-Qura calendar, R.H. van Gent, Utrecht University (URL in `engine/rebound_engine/calendar.py`). UAE moon-sighting can differ by about a day: the user's "Ramadan started today / ended" tap moves the date (at most ±2 days) and applies the same day. Only for users who said they fast. |
+| Iftar and suhoor | Abu Dhabi, 15th of the month: Jan dawn 05:47 / sunset 17:55, Feb 05:39 / 18:17, Mar 05:15 / 18:31; movement prompt 1 h after iftar | Computed offline with the NOAA solar-position equations (Meeus), sun −18.2° for dawn (UAE Fajr angle) and −0.833° for sunset; not read from an official timetable, so within a few minutes. Users can set their own iftar time. Only Jan–Mar (where Ramadan falls in 2026–2028). |
+| Eid al-Fitr | first 3 days of Shawwal are rest-friendly for fasting users: a skipped or unanswered step counts like a paused day; an "Eid Mubarak" message | Celebration days shouldn't count as slips. |
+| Heat | on automatically May–September (`HEAT_MONTHS`) | Months when Abu Dhabi midday highs are routinely above 40 °C. Live weather is a later integration. |
+| Shift timings | weekly pattern (`basics.shifts`, e.g. Sun–Thu 22:00–06:00), editable in settings, takes effect the next day. Work hours are busy. After a night shift (overnight, ending before noon): sleep from 1 h after the shift ends for 7 h (busy), movement 1 h after waking, sleep wind-down prompt as the shift ends | Prompts follow the person's real day, not a 9-to-5 default. 1 h home and 7 h sleep are round defaults, not measured. |
+
+## New behaviours: nutrition, smoking, recovery (Task 05 Part B)
+
+| Choice | Value | Why |
+|---|---|---|
+| Goals | any of movement, sleep, nutrition, smoking, recovery; smoking only for current smokers (422 otherwise) | The brief's behaviours; a smoking plan for a non-smoker makes no sense. |
+| Plan order | recovery first if recovering or stressed, nutrition next with diabetes, then movement, sleep, nutrition, smoking, recovery | Rest before effort; then what the person manages. Unchanged ([movement, sleep]) for anyone without these answers. |
+| Burden cap | at most 3 actions a day (`MAX_ACTIVE_BEHAVIOURS`); with more goals the first 2 stay and the third slot rotates daily through the rest | Task 05 B5; rotation keeps every chosen goal alive without adding load. |
+| Starting level | tier 1, habit strength 0 (`NEW_BEHAVIOUR_START_TIER`, `NEW_BEHAVIOUR_H0`) | No baseline question for these; start with the smallest step. |
+| Ladders | nutrition: water with meals → add a fruit or vegetable → swap one sugary drink → cook at home (recipe); smoking: delay the first cigarette 15 min → one fewer → a smoke-free hour → a smoke-free day; recovery: 2-minute breathing → 15 min screen-free → plan a lighter evening → 10 min daylight | Task 05 B1–B3. BCT codes per step in `engine/data/actions.yaml`. |
+| Variants | suhoor/iftar steps (`ramadan_only`, only during Ramadan and preferred then), diabetes steps (regular meals, swap drinks; preferred with diabetes), rest after illness (preferred when recovering), substitution / cue-avoidance / use-what-you-have steps (chosen by barriers) | Tags rank variants inside a tier; movement and sleep have no tags, so their choice is unchanged. |
+| Prompt windows | nutrition at lunch (afternoon), smoking in the morning (first cigarette), recovery in the evening; during Ramadan nutrition and smoking at iftar | Typical moments for each behaviour. |
+| Same-hour clashes | a later action that shares an hour with an earlier one moves 1–3 h later (`SPREAD_MAX_SHIFT_H`) to a free hour (not quiet, work, post-shift sleep, or the heat window for outdoor steps); stays if none is free. Exception: a movement–sleep clash stays as before | Two prompts at once are easy to miss. Movement and sleep can already clash in the simulator (movement moved to the evening); changing that would change run_011. |
+| Rest-after-illness step | only for users recovering from illness/injury or while the illness flag is on; otherwise the 2-minute breathing step | Review fix: a stressed user who isn't ill shouldn't be told to lie down. |
+| Dates at iftar | the "water and dates" step is never shown to users managing diabetes; they get "water first, then your meal" | Review fix: dates are sugary. |
+| New barriers | `craving` → smoking tier −1 + a substitution step + quit-help message; `stress` → recovery first today, movement/nutrition/smoking tier −1; `others_smoking` → cue-avoidance step; `no_healthy_food_nearby` → use-what-you-have step | Task 05 B4. |
+| Safety | nutrition: no calorie or weight numbers, "general guidance, not medical advice", "check diet changes with your doctor" with diabetes or pregnancy; smoking: no medicines or nicotine products; quit help is "talk to your doctor, pharmacist or a licensed smoking-cessation clinic (ask your health centre)", with no phone number because none could be verified as current (Gulf News on ADPHC's 15 licensed clinics in Abu Dhabi, cited in `api/messages.py`); recovery: rest, not treatment, 800 SAKINA in its limits. Disordered-eating red flags pause all coaching (existing rule). All tested by banned-word checks. | §2.5. |
+| Recipes | 20 curated recipes (Emirati, wider Arab, South Asian) in `engine/data/recipes.yaml`, tagged `diabetes_friendly`, `fasting`, `family`, `quick`, `budget`; written by us, no calorie counts; suggested only for cooking steps, rotating by day, diabetes-friendly with diabetes, suhoor/iftar-friendly in Ramadan | Task 05 B1. Arabic titles only for now (draft); ingredients and steps English. |
+| While ill (`illness` flag, until "I'm OK") | no movement; nutrition and recovery at tier 1 only (`ILLNESS_MAX_TIER`); smoking-reduction steps allowed; sleep unchanged (all tiers, as before Task 05) | Gentle, non-physical steps only. Limiting sleep too would change the simulator (personas do report illness), so it would need a pre-registered re-run; left as before. |
+| Community events | read-only `api/data/community_events.json`; real programmes need a source URL and a check date, everything else is titled "Example:" (enforced when loading). Filtered by goals (events with no behaviour tag, like screenings, show to everyone), women-only preference (movement events only), mobility aid → wheelchair-accessible only, "some" limitation → wheelchair-accessible ranked first, language, and request-only household/city filters | Peer support and community campaigns without user posts or location tracking. Real entries were checked from published pages on 14 Nov 2026, not confirmed with organisers; schedules change. |
+| Simulator and risk model | personas keep the original 8 barriers and the movement/sleep BCT codes; risk features stay on movement, sleep and the original barriers (`RISK_BEHAVIOURS`, `RISK_BARRIERS`) | So run_011 and the frozen risk_001 model are unchanged (same-seed check). |
+
+## Encouragement moments (Task 05 Part C)
+
+Positive moments replace streaks. They fire only after a completion (full or partial), at most one a day, never
+while coaching is paused or after a red flag, and users can turn them off (`preferences.encouragement`). They are
+observation only: they never change which actions are chosen, so the simulator's results are unchanged (same-seed
+check).
+
+| Moment | When | Repeats? | BCT (Taxonomy v1) |
+|---|---|---|---|
+| `first_day_done` | the first completion ever | once | 10.4 Social reward |
+| `three_good_days` | a completion on each of the last 3 days (`ENCOURAGE_GOOD_DAYS`) | once | 10.4 Social reward |
+| `comeback` | the first completion after slipping into drifting or lapsed ("We missed you, glad you're back") | after every slip | 10.4 Social reward; 15.1 Verbal persuasion about capability |
+| `habit_strength_50` | habit strength for a behaviour reaches 0.5 (`ENCOURAGE_HABIT_STRENGTH`) | once per behaviour | 2.2 Feedback on behaviour |
+| `first_week_done` | a completion on day 7 or later (`ENCOURAGE_FIRST_WEEK_DAY`) | once | 2.2 Feedback on behaviour |
+| `tried_something_new` | the first completion of a step not done before (not the very first step) | yes | 10.4 Social reward |
+
+When several moments fit the same day, the order above (comeback first) decides; a once-only moment that lost out
+fires on a later completion.
+
+**Rationale:** praise for real progress supports self-efficacy without the all-or-nothing pressure of a streak.
+**Limits:** frequent or empty praise loses meaning, hence one a day and only real moments. Messages never show a
+count, never use streak language and never mention how many days were missed (tested). Three variants per moment,
+rotated by day, EN + AR (draft) + simple EN and AR variants.
+
+## Health literacy (Task 05 Part D)
+
+- **Two reading levels**, `standard` and `simple`. Every user-facing string has a simple EN and AR variant: action
+  titles, messages, plan reasons, encouragement, the rotation note, the health check and "why we ask" lines. The API
+  picks the variant, so the engine and the simulator don't change.
+- **Target: Flesch-Kincaid grade ≤ 6** for every English simple string (tested). Grade 6 is a common target for
+  health materials for the public. The method is the standard FK formula,
+  `0.39 × words/sentences + 11.8 × syllables/words − 15.59`, with a heuristic syllable count (vowel groups, minus a
+  silent final "e"; numbers count as one). It is checked against known sentences. It can be off by a syllable on
+  some words, so treat the score as a guide, not a measurement.
+- **Not scored:** recipe titles. They are dish names ("Shakshuka"), and FK is meaningless on a name. They are kept to
+  ≤ 6 words instead. Action `rationale` and `limits` (the "why this?" screen) are English-only and have no simple
+  variant yet.
+- **Safety wording is kept exactly** in every language and level (tested): the red-flag message keeps 998 and
+  "800 SAKINA (800 725462)", and the doctor advice stays in every doctor message.
+- **Arabic is a draft translation, pending native review.** No native speaker has checked it. `python -m
+  api.review_arabic` writes `review/arabic_review.csv` (git-ignored): each Arabic string, its English source and an
+  optional LLM back-translation, with the safety-critical rows first. It is a checklist for a human; it proves
+  nothing by itself.
+
+## Family context (Task 05 Part E)
+
+- **Three optional answers** in preferences: `household` (alone, family, children, older relatives), `caregiver`,
+  `family_fasting`. We store only these answers. Nothing is stored about the other people, and nobody else gets
+  messages. Withdrawing the preferences consent deletes them.
+- **Family variants are suggestions**, not a plan for the whole family. 8 steps: moving at home with the family
+  (tier 1), a family walk after maghrib (tier 2), a water jug on the table (tier 1), a fruit bowl (tier 2), two
+  family-iftar steps (Ramadan only, tiers 1–2), a smoke-free room (tier 1) and a short caregiver pause (tier 1). Each
+  carries the same safety and fasting flags as other steps and goes through the same safety filter.
+- **When they show:** `family` steps need a household other than alone, `family_iftar` steps need `family_fasting`
+  and Ramadan, and the caregiver pause needs `caregiver`. When they fit, they come before other variants at the same
+  tier. The tier itself doesn't change. Cooking steps suggest recipes tagged `family` for people living with family.
+- **"Family things" (`social_family`):** with a family at home, the next steps prefer a family step, and the reply is
+  "Family comes first. Today's step is one you can do with them." Without one, nothing changes.
+- **Caregivers:** recovery already starts at tier 1, so "a gentler start" means the 5-minute caregiver pause comes
+  first, plus one plan reason ("You care for someone, so rest steps start short"). There is no new tier rule.
+- **Not evaluated.** Simulator personas have no household, so with these answers unset the engine behaves exactly
+  as before (tested, plus the same-seed check against run_011). Whether family steps help is a pilot question.
+- **What went wrong first:** the first Part E build failed the same-seed check in every arm, including the streak
+  app. Personas drew one random number per movement/sleep BCT code, and that list was read from the action library.
+  The family walk added code 3.1, so every later draw shifted. Fix: the list is now frozen to run_011's six codes
+  (`sim/personas.py`). A test re-imports the simulator with and without the family steps and needs identical
+  results in all arms. No outputs from the broken build were kept.
+
 ## API (Task 03)
 
 | Choice | Value | Why |
@@ -787,6 +907,9 @@ The persistence results fit Rebound asking for more than a static easy plan (lap
 - The action library is a first draft: 17 actions, Arabic titles not yet reviewed (`ar_reviewed: false`),
   rationale and limits English only.
 - Screening questions are paraphrased from PAR-Q+ and are not a clinical tool.
+- All Arabic, including the safety texts and their simple versions, is a draft translation, pending native review.
+  The readability check covers English only; there is no Arabic readability test.
+- Family variants (Task 05 Part E) are engine-tested but not simulation-evaluated: personas have no household.
 - The in-memory store loses data on restart; the API uses `SQLiteStore` (Task 03).
 - `SQLiteStore` serialises single reads and writes, but an engine call (load state → change → save) is not one
   transaction: two requests for the same user at the same moment can overwrite each other's state. Fine for a
@@ -795,6 +918,18 @@ The persistence results fit Rebound asking for more than a static easy plan (lap
   as a sha256 hash; no expiry, rotation, recovery or rate limiting, and a lost token means a lost account. Demo
   routes exist only with `DEMO_MODE=true`; `/demo/seed` needs the shared `DEMO_KEY` (`X-Demo-Key` header) and is
   refused when none is set. The employer view uses one shared org key from `.env`.
+- Nutrition, smoking and recovery are engine-tested but not yet simulation-evaluated. Their ladders, variants and
+  barrier rules are design choices, not results.
+- Recipes have Arabic titles only; ingredients, steps and swaps are English. Nutritional content isn't
+  professionally reviewed: "general guidance, not medical advice".
+- The simulator doesn't evaluate automatic context detection itself. The reported results (run_011) cover a world
+  where the engine is told about Ramadan and heat, which is what the calendar delivers for fasting users.
+- Real shift timings are engine-tested but not simulation-evaluated; that would need a new, pre-registered study
+  (personas with shift patterns and calendar-based Ramadan, fresh seeds).
+- The iftar/suhoor table is astronomically computed, not an official timetable, and covers January–March only;
+  extend it (and the Ramadan table) for 2029 onwards.
+- The high-blood-pressure and back/joint-pain chips cap movement at tier 2 for as long as they're selected. There is
+  no "my doctor cleared me" switch: we can't verify a self-declared clearance. The user can remove the chip.
 - Changing `preferences.channel` in settings is saved but doesn't change the engine's channel (set at onboarding,
   then only by the `forgot` rule); the engine has no call for it yet.
 - Withdrawing consent for body, history or preferences deletes those answers (preferences go back to defaults,

@@ -43,6 +43,50 @@
     }
    }
   },
+  "/users/{user_id}/plan": {
+   "get": {
+    "summary": "Plan",
+    "operationId": "plan_users__user_id__plan_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "user_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "User Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PlanOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/users/{user_id}/today": {
    "get": {
     "summary": "Today",
@@ -374,6 +418,194 @@
     }
    }
   },
+  "/users/{user_id}/community/events": {
+   "get": {
+    "summary": "Community Events",
+    "description": "Read-only events that fit the user (goals, women-only spaces, mobility, language). `household` and `city`\nare request filters only: no location tracking, nothing stored.",
+    "operationId": "community_events_users__user_id__community_events_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "user_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "User Id"
+      }
+     },
+     {
+      "name": "household",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/Household"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Household"
+      }
+     },
+     {
+      "name": "behaviour",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/Behaviour"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Behaviour"
+      }
+     },
+     {
+      "name": "city",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "maxLength": 40
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "City"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/CommunityEvent"
+         },
+         "title": "Response Community Events Users  User Id  Community Events Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/recipes": {
+   "get": {
+    "summary": "Recipes",
+    "description": "The curated recipe set (general content, no auth), optionally filtered by one tag.",
+    "operationId": "recipes_recipes_get",
+    "parameters": [
+     {
+      "name": "tag",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Tag"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/RecipeOut"
+         },
+         "title": "Response Recipes Recipes Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/recipes/{recipe_id}": {
+   "get": {
+    "summary": "Recipe",
+    "operationId": "recipe_recipes__recipe_id__get",
+    "parameters": [
+     {
+      "name": "recipe_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Recipe Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RecipeOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/actions/{action_id}/explain": {
    "get": {
     "summary": "Explain",
@@ -396,6 +628,15 @@
        "$ref": "#/components/schemas/Language",
        "default": "en"
       }
+     },
+     {
+      "name": "reading_level",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "$ref": "#/components/schemas/ReadingLevel",
+       "default": "standard"
+      }
      }
     ],
     "responses": {
@@ -405,6 +646,55 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/ExplainOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/content/onboarding": {
+   "get": {
+    "summary": "Onboarding Content",
+    "description": "Health-check questions, \"why we ask\" lines and a reading-level example, before the user exists.",
+    "operationId": "onboarding_content_content_onboarding_get",
+    "parameters": [
+     {
+      "name": "lang",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "$ref": "#/components/schemas/Language",
+       "default": "en"
+      }
+     },
+     {
+      "name": "reading_level",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "$ref": "#/components/schemas/ReadingLevel",
+       "default": "standard"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OnboardingTextOut"
         }
        }
       }
@@ -687,6 +977,34 @@
       "type": "integer",
       "exclusiveMinimum": 0.0,
       "title": "Duration Min"
+     },
+     "simple": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/LocalizedText"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "icon": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Icon"
+     },
+     "tags": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Tags"
      }
     },
     "additionalProperties": false,
@@ -793,7 +1111,11 @@
      "low_motivation",
      "social_family",
      "forgot",
-     "other"
+     "other",
+     "craving",
+     "stress",
+     "others_smoking",
+     "no_healthy_food_nearby"
     ],
     "title": "Barrier"
    },
@@ -915,6 +1237,20 @@
        }
       ],
       "title": "Shift Cycle"
+     },
+     "shifts": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/Shift"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Shifts"
      }
     },
     "additionalProperties": false,
@@ -934,7 +1270,10 @@
     "type": "string",
     "enum": [
      "movement",
-     "sleep"
+     "sleep",
+     "nutrition",
+     "smoking",
+     "recovery"
     ],
     "title": "Behaviour"
    },
@@ -1049,13 +1388,164 @@
     ],
     "title": "CheckinOut"
    },
+   "CommunityEvent": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "title": {
+      "$ref": "#/components/schemas/LocalizedText"
+     },
+     "category": {
+      "type": "string",
+      "enum": [
+       "walking_group",
+       "park_run",
+       "sports_night",
+       "free_health_screening",
+       "family_activity",
+       "women_only",
+       "wheelchair_accessible"
+      ],
+      "title": "Category"
+     },
+     "behaviours": {
+      "items": {
+       "$ref": "#/components/schemas/Behaviour"
+      },
+      "type": "array",
+      "title": "Behaviours"
+     },
+     "city": {
+      "type": "string",
+      "title": "City"
+     },
+     "area": {
+      "type": "string",
+      "title": "Area"
+     },
+     "schedule": {
+      "type": "string",
+      "title": "Schedule"
+     },
+     "cost": {
+      "type": "string",
+      "title": "Cost"
+     },
+     "accessibility": {
+      "type": "string",
+      "title": "Accessibility"
+     },
+     "women_only": {
+      "type": "boolean",
+      "title": "Women Only"
+     },
+     "wheelchair_accessible": {
+      "type": "boolean",
+      "title": "Wheelchair Accessible"
+     },
+     "family_friendly": {
+      "type": "boolean",
+      "title": "Family Friendly"
+     },
+     "languages": {
+      "items": {
+       "$ref": "#/components/schemas/Language"
+      },
+      "type": "array",
+      "title": "Languages"
+     },
+     "organiser": {
+      "type": "string",
+      "title": "Organiser"
+     },
+     "source_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Source Url"
+     },
+     "last_checked": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Checked"
+     },
+     "example": {
+      "type": "boolean",
+      "title": "Example"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "title",
+     "category",
+     "behaviours",
+     "city",
+     "area",
+     "schedule",
+     "cost",
+     "accessibility",
+     "women_only",
+     "wheelchair_accessible",
+     "family_friendly",
+     "languages",
+     "organiser",
+     "source_url",
+     "last_checked",
+     "example"
+    ],
+    "title": "CommunityEvent"
+   },
+   "Condition": {
+    "type": "string",
+    "enum": [
+     "diabetes",
+     "high_blood_pressure",
+     "back_or_joint_pain",
+     "stress",
+     "recovering_from_illness_or_injury"
+    ],
+    "title": "Condition",
+    "description": "\"Anything you're managing?\" chips (Task 05). Pregnancy and smoking come from their existing fields."
+   },
+   "Conditions": {
+    "properties": {
+     "managing": {
+      "items": {
+       "$ref": "#/components/schemas/Condition"
+      },
+      "type": "array",
+      "title": "Managing"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "Conditions",
+    "description": "Optional and sensitive. No free-text medical history."
+   },
    "ConsentGroup": {
     "type": "string",
     "enum": [
      "body",
      "screening",
      "history",
-     "preferences"
+     "preferences",
+     "conditions"
     ],
     "title": "ConsentGroup"
    },
@@ -1067,7 +1557,8 @@
      "shift_pattern",
      "travel",
      "illness",
-     "paused"
+     "paused",
+     "eid"
     ],
     "title": "ContextFlag"
    },
@@ -1162,6 +1653,53 @@
     ],
     "title": "DayRow"
    },
+   "DayTimes": {
+    "properties": {
+     "wake": {
+      "type": "integer",
+      "title": "Wake"
+     },
+     "sleep": {
+      "type": "integer",
+      "title": "Sleep"
+     },
+     "sleep_prompt": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sleep Prompt"
+     },
+     "busy": {
+      "items": {
+       "prefixItems": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "integer"
+        }
+       ],
+       "type": "array",
+       "maxItems": 2,
+       "minItems": 2
+      },
+      "type": "array",
+      "title": "Busy"
+     }
+    },
+    "type": "object",
+    "required": [
+     "wake",
+     "sleep"
+    ],
+    "title": "DayTimes",
+    "description": "One day's timings from real shifts (Task 05 A2). Hours 0-23; busy ranges are [start, end), may wrap."
+   },
    "EmployerOut": {
     "properties": {
      "org_id": {
@@ -1204,6 +1742,72 @@
     ],
     "title": "EmployerOut",
     "description": "Aggregates for one org; only returned for groups of at least EMPLOYER_MIN_GROUP (AGENTS.md \u00a72.6)."
+   },
+   "Encouragement": {
+    "properties": {
+     "moment": {
+      "type": "string",
+      "enum": [
+       "first_day_done",
+       "three_good_days",
+       "comeback",
+       "habit_strength_50",
+       "first_week_done",
+       "tried_something_new"
+      ],
+      "title": "Moment"
+     },
+     "day": {
+      "type": "integer",
+      "title": "Day"
+     },
+     "behaviour": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Behaviour"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "moment",
+     "day"
+    ],
+    "title": "Encouragement",
+    "description": "Task 05 Part C: a real moment worth a small \"well done\". Never a count, never a streak."
+   },
+   "EncouragementOut": {
+    "properties": {
+     "moment": {
+      "type": "string",
+      "title": "Moment"
+     },
+     "message": {
+      "type": "string",
+      "title": "Message"
+     },
+     "behaviour": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Behaviour"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "moment",
+     "message"
+    ],
+    "title": "EncouragementOut",
+    "description": "A small pop-up: a real moment and its message (Task 05 Part C)."
    },
    "EngagementState": {
     "type": "string",
@@ -1292,7 +1896,8 @@
      "screening_flag",
      "red_flag",
      "context_change",
-     "risk_alert"
+     "risk_alert",
+     "encouragement"
     ],
     "title": "EventType"
    },
@@ -1427,6 +2032,17 @@
     "type": "object",
     "title": "History"
    },
+   "Household": {
+    "type": "string",
+    "enum": [
+     "alone",
+     "family",
+     "children",
+     "older_relatives"
+    ],
+    "title": "Household",
+    "description": "Who the user lives with (Task 05 Part E). Nothing is stored about the other people."
+   },
    "Language": {
     "type": "string",
     "enum": [
@@ -1493,6 +2109,9 @@
      "history": {
       "$ref": "#/components/schemas/History"
      },
+     "conditions": {
+      "$ref": "#/components/schemas/Conditions"
+     },
      "preferences": {
       "$ref": "#/components/schemas/Preferences"
      },
@@ -1557,6 +2176,9 @@
      },
      "today": {
       "$ref": "#/components/schemas/TodayOut"
+     },
+     "plan_summary": {
+      "$ref": "#/components/schemas/PlanOut"
      }
     },
     "type": "object",
@@ -1566,9 +2188,54 @@
      "screening",
      "red_flag",
      "state",
-     "today"
+     "today",
+     "plan_summary"
     ],
     "title": "OnboardOut"
+   },
+   "OnboardingTextOut": {
+    "properties": {
+     "questions": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "type": "object",
+      "title": "Questions"
+     },
+     "why_we_ask": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "type": "object",
+      "title": "Why We Ask"
+     },
+     "reading_level_examples": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "type": "object",
+      "title": "Reading Level Examples"
+     },
+     "translation_note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Translation Note"
+     }
+    },
+    "type": "object",
+    "required": [
+     "questions",
+     "why_we_ask",
+     "reading_level_examples",
+     "translation_note"
+    ],
+    "title": "OnboardingTextOut"
    },
    "PastHelper": {
     "type": "string",
@@ -1592,6 +2259,50 @@
     ],
     "title": "PlaceSetting"
    },
+   "PlanOut": {
+    "properties": {
+     "behaviours": {
+      "items": {
+       "$ref": "#/components/schemas/Behaviour"
+      },
+      "type": "array",
+      "title": "Behaviours"
+     },
+     "reasons": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Reasons"
+     },
+     "all_reasons": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "All Reasons"
+     },
+     "rotation_note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rotation Note"
+     }
+    },
+    "type": "object",
+    "required": [
+     "behaviours",
+     "reasons",
+     "all_reasons"
+    ],
+    "title": "PlanOut",
+    "description": "What the user sees of their plan. Queued behaviours are internal and never included."
+   },
    "Preferences": {
     "properties": {
      "setting": {
@@ -1610,6 +2321,18 @@
       "type": "boolean",
       "title": "Fasting Ramadan",
       "default": false
+     },
+     "iftar_time": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Iftar Time"
      },
      "notification_window": {
       "anyOf": [
@@ -1641,6 +2364,40 @@
       },
       "type": "array",
       "title": "Accessibility"
+     },
+     "encouragement": {
+      "type": "boolean",
+      "title": "Encouragement",
+      "default": true
+     },
+     "reading_level": {
+      "$ref": "#/components/schemas/ReadingLevel",
+      "default": "standard"
+     },
+     "read_aloud": {
+      "type": "boolean",
+      "title": "Read Aloud",
+      "default": false
+     },
+     "household": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Household"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "caregiver": {
+      "type": "boolean",
+      "title": "Caregiver",
+      "default": false
+     },
+     "family_fasting": {
+      "type": "boolean",
+      "title": "Family Fasting",
+      "default": false
      }
     },
     "additionalProperties": false,
@@ -1655,6 +2412,80 @@
      "prefer_not_to_say"
     ],
     "title": "PregnancyAnswer"
+   },
+   "ReadingLevel": {
+    "type": "string",
+    "enum": [
+     "standard",
+     "simple"
+    ],
+    "title": "ReadingLevel"
+   },
+   "RecipeOut": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "title": {
+      "$ref": "#/components/schemas/LocalizedText"
+     },
+     "cuisine": {
+      "type": "string",
+      "pattern": "^(emirati|arab|south_asian)$",
+      "title": "Cuisine"
+     },
+     "minutes": {
+      "type": "integer",
+      "exclusiveMinimum": 0.0,
+      "title": "Minutes"
+     },
+     "tags": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Tags"
+     },
+     "ingredients": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "minItems": 1,
+      "title": "Ingredients"
+     },
+     "steps": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "minItems": 1,
+      "title": "Steps"
+     },
+     "swap": {
+      "type": "string",
+      "title": "Swap"
+     },
+     "note": {
+      "type": "string",
+      "title": "Note",
+      "default": "General guidance, not medical advice."
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "title",
+     "cuisine",
+     "minutes",
+     "tags",
+     "ingredients",
+     "steps",
+     "swap"
+    ],
+    "title": "RecipeOut"
    },
    "ScheduleType": {
     "type": "string",
@@ -1791,6 +2622,13 @@
      "seated_only": {
       "type": "boolean",
       "title": "Seated Only"
+     },
+     "contraindicated": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Contraindicated"
      }
     },
     "type": "object",
@@ -1900,6 +2738,45 @@
        }
       ],
       "title": "Context"
+     },
+     "conditions": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Conditions"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "shifts": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/Shift"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Shifts"
+     },
+     "ramadan": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "started_today",
+         "ended_today"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ramadan"
      }
     },
     "additionalProperties": false,
@@ -1923,13 +2800,17 @@
      },
      "state": {
       "$ref": "#/components/schemas/StateOut"
+     },
+     "plan_summary": {
+      "$ref": "#/components/schemas/PlanOut"
      }
     },
     "type": "object",
     "required": [
      "preferences",
      "consents",
-     "state"
+     "state",
+     "plan_summary"
     ],
     "title": "SettingsOut"
    },
@@ -1941,6 +2822,37 @@
      "prefer_not_to_say"
     ],
     "title": "Sex"
+   },
+   "Shift": {
+    "properties": {
+     "days": {
+      "items": {
+       "$ref": "#/components/schemas/Weekday"
+      },
+      "type": "array",
+      "minItems": 1,
+      "title": "Days"
+     },
+     "start": {
+      "type": "string",
+      "format": "time",
+      "title": "Start"
+     },
+     "end": {
+      "type": "string",
+      "format": "time",
+      "title": "End"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "days",
+     "start",
+     "end"
+    ],
+    "title": "Shift",
+    "description": "One line of a weekly shift pattern, e.g. Sun-Thu 22:00-06:00 (end before start = overnight)."
    },
    "SmokingStatus": {
     "type": "string",
@@ -2035,6 +2947,16 @@
     "properties": {
      "state": {
       "$ref": "#/components/schemas/StateOut"
+     },
+     "encouragement": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/EncouragementOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
      }
     },
     "type": "object",
@@ -2155,12 +3077,29 @@
       "type": "array",
       "title": "Risk Reasons"
      },
+     "encouragement": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/EncouragementOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
      "messages": {
       "items": {
        "type": "string"
       },
       "type": "array",
       "title": "Messages"
+     },
+     "recipes": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/RecipeOut"
+      },
+      "type": "object",
+      "title": "Recipes"
      }
     },
     "type": "object",
@@ -2198,6 +3137,9 @@
      },
      "history": {
       "$ref": "#/components/schemas/History"
+     },
+     "conditions": {
+      "$ref": "#/components/schemas/Conditions"
      },
      "preferences": {
       "$ref": "#/components/schemas/Preferences"
@@ -2420,6 +3362,77 @@
       "type": "integer",
       "title": "Last Checkin Sent Day",
       "default": -999
+     },
+     "auto_flags": {
+      "items": {
+       "$ref": "#/components/schemas/ContextFlag"
+      },
+      "type": "array",
+      "uniqueItems": true,
+      "title": "Auto Flags"
+     },
+     "iftar_hour": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Iftar Hour"
+     },
+     "day_times": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/DayTimes"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "order": {
+      "items": {
+       "$ref": "#/components/schemas/Behaviour"
+      },
+      "type": "array",
+      "title": "Order"
+     },
+     "rotation": {
+      "type": "integer",
+      "title": "Rotation",
+      "default": 0
+     },
+     "encouragement": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Encouragement"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "moments": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Moments"
+     },
+     "done_actions": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true,
+      "title": "Done Actions"
+     },
+     "slip_day": {
+      "type": "integer",
+      "title": "Slip Day",
+      "default": -1
      }
     },
     "type": "object",
@@ -2471,6 +3484,19 @@
      "type"
     ],
     "title": "ValidationError"
+   },
+   "Weekday": {
+    "type": "string",
+    "enum": [
+     "mon",
+     "tue",
+     "wed",
+     "thu",
+     "fri",
+     "sat",
+     "sun"
+    ],
+    "title": "Weekday"
    }
   },
   "securitySchemes": {

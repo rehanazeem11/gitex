@@ -4,13 +4,15 @@ import random
 from typing import Protocol
 
 from . import config
-from .actions import filter_actions
+from .actions import filter_actions, lives_with_family
+from .calendar import in_busy
 from .models import (
     Action,
     ActionSetting,
     Barrier,
     Behaviour,
     Channel,
+    Condition,
     Context,
     ContextFlag,
     DayOutcome,
@@ -35,20 +37,46 @@ BARRIER_MESSAGE = {
     Barrier.social_family: "thanks_for_sharing",
     Barrier.forgot: "new_reminder",
     Barrier.other: "thanks_for_sharing",
+    Barrier.craving: "craving_tip",
+    Barrier.stress: "stress_rest",
+    Barrier.others_smoking: "smoke_free_space",
+    Barrier.no_healthy_food_nearby: "pantry_swap",
 }
 
 # When several barriers are given, the first one in this order is applied (safety-relevant first).
+# Part B barriers slot in without changing the order of the original ones.
 BARRIER_PRIORITY = (
     Barrier.illness_pain,
     Barrier.environment,
     Barrier.energy_fatigue,
+    Barrier.stress,
     Barrier.schedule_change,
     Barrier.time,
+    Barrier.craving,
+    Barrier.others_smoking,
+    Barrier.no_healthy_food_nearby,
     Barrier.forgot,
     Barrier.low_motivation,
     Barrier.social_family,
     Barrier.other,
 )
+
+# A barrier that prefers steps with this tag (until the next full completion clears last_barrier).
+BARRIER_TAG = {
+    Barrier.craving: "substitution",
+    Barrier.others_smoking: "cue_avoidance",
+    Barrier.no_healthy_food_nearby: "no_shopping",
+    Barrier.social_family: "family",  # only applies when family steps are allowed (household other than alone)
+}
+# Variants that fit the person's home life (Task 05 Part E) come before every other fitting variant.
+_FAMILY_TAGS = frozenset({"family", "family_iftar", "caregiver"})
+
+
+def barrier_message(profile: UserProfile, barrier: Barrier) -> str:
+    """The reply for a barrier. "Family things" with a family at home gets a family reply (Task 05 Part E)."""
+    if barrier == Barrier.social_family and lives_with_family(profile):
+        return "family_together"
+    return BARRIER_MESSAGE[barrier]
 
 
 def primary_barrier(barriers: list[Barrier]) -> Barrier | None:
@@ -117,8 +145,24 @@ def tier_cap(profile: UserProfile, behaviour: Behaviour) -> int:
     return config.MAX_TIER
 
 
+def effective_flags(state: UserState) -> set[ContextFlag]:
+    """Explicit flags plus what the calendar worked out (Task 05 A2); the calendar never removes a flag."""
+    return state.context_flags | state.auto_flags
+
+
+# Prompt windows per behaviour: movement can move between all three; meals at lunch, the first cigarette in the
+# morning, rest and sleep in the evening.
+_WINDOWS = {
+    Behaviour.movement: list(TimeWindow),
+    Behaviour.sleep: [TimeWindow.evening],
+    Behaviour.nutrition: [TimeWindow.afternoon],
+    Behaviour.smoking: [TimeWindow.morning],
+    Behaviour.recovery: [TimeWindow.evening],
+}
+
+
 def _candidate_windows(behaviour: Behaviour) -> list[TimeWindow]:
-    return list(TimeWindow) if behaviour == Behaviour.movement else [TimeWindow.evening]
+    return list(_WINDOWS[behaviour])
 
 
 def window_hour(profile: UserProfile, window: TimeWindow) -> int:
@@ -142,12 +186,51 @@ def prompt_options(
     """(window, hour) pairs outside quiet hours; the rules-mode default window comes first.
     If every window is quiet, the default window moves to the end of quiet hours."""
     windows = _candidate_windows(behaviour)
-    default = state.time_window if behaviour == Behaviour.movement else TimeWindow.evening
+    default = state.time_window if behaviour == Behaviour.movement else windows[0]
     i = windows.index(default)
     ordered = windows[i:] + windows[:i]  # default first, then the next windows in order
     quiet = profile.preferences.quiet_hours
-    free = [(w, h) for w in ordered if not _in_quiet_hours(h := window_hour(profile, w), quiet)]
-    return free or [(default, quiet.end.hour)]
+    if state.day_times is None and state.iftar_hour is None:  # no calendar context: unchanged (the simulator)
+        free = [(w, h) for w in ordered if not _in_quiet_hours(h := window_hour(profile, w), quiet)]
+        return free or [(default, quiet.end.hour)]
+    return _calendar_options(profile, state, behaviour, ordered, quiet)
+
+
+def _calendar_options(
+    profile: UserProfile, state: UserState, behaviour: Behaviour, ordered: list[TimeWindow], quiet: TimeRange | None
+) -> list[tuple[TimeWindow, int]]:
+    """Task 05 A2: prompt hours from real shift timings and iftar; never in quiet, work or post-night-shift sleep."""
+    t = state.day_times
+    busy = t.busy if t else []
+    wake = t.wake if t else profile.basics.usual_wake_time.hour
+    sleep = t.sleep if t else profile.basics.usual_sleep_time.hour
+
+    def hour(w: TimeWindow) -> int:
+        if w == TimeWindow.morning:
+            return (wake + config.MORNING_OFFSET_H) % 24
+        if w == TimeWindow.afternoon:
+            return config.AFTERNOON_HOUR
+        return (sleep + config.EVENING_OFFSET_H) % 24
+
+    fasting = ContextFlag.ramadan in (state.context_flags | state.auto_flags)
+    if behaviour == Behaviour.movement and state.iftar_hour is not None and fasting:
+        candidates = [(TimeWindow.evening, (state.iftar_hour + config.RAMADAN_MOVE_AFTER_IFTAR_H) % 24)]
+    elif behaviour in (Behaviour.nutrition, Behaviour.smoking) and state.iftar_hour is not None and fasting:
+        candidates = [(ordered[0], state.iftar_hour)]  # meals and the first cigarette come at iftar
+    elif behaviour == Behaviour.sleep and t is not None and t.sleep_prompt is not None:
+        candidates = [(TimeWindow.evening, t.sleep_prompt)]  # wind-down as the night shift ends
+    else:
+        candidates = [(w, hour(w)) for w in ordered]
+
+    def free(h: int) -> bool:
+        return not _in_quiet_hours(h, quiet) and not in_busy(h, busy)
+
+    options = [(w, h) for w, h in candidates if free(h)]
+    if options:
+        return options
+    w, h = candidates[0]
+    later = next(((h + k) % 24 for k in range(1, 24) if free((h + k) % 24)), h)
+    return [(w, later)]
 
 
 def _next_window(w: TimeWindow) -> TimeWindow:
@@ -231,7 +314,43 @@ def apply_barrier(profile: UserProfile, state: UserState, barrier: Barrier) -> s
         state.context_flags.add(ContextFlag.illness)
     elif barrier == Barrier.environment:
         state.prefer_indoor = True
-    return BARRIER_MESSAGE[barrier]
+    elif barrier == Barrier.craving:
+        _tier_down(state, Behaviour.smoking)  # and a substitution step (BARRIER_TAG)
+    elif barrier == Barrier.stress:
+        for b in (Behaviour.movement, Behaviour.nutrition, Behaviour.smoking):
+            _tier_down(state, b)  # recovery comes first today (todays_behaviours)
+    return barrier_message(profile, barrier)
+
+
+def _tag_rank(profile: UserProfile, state: UserState, a: Action) -> int:
+    """0 for a family/caregiver variant (filter_actions only lets through the ones that fit), 1 for another variant
+    that fits this person right now (Ramadan, diabetes, recovering), else 2. Movement and sleep actions without
+    tags keep their order."""
+    managing = profile.conditions.managing
+    fits = (
+        ("ramadan_only" in a.tags and ContextFlag.ramadan in effective_flags(state))
+        or ("diabetes" in a.tags and Condition.diabetes in managing)
+        or ("after_illness" in a.tags and (Condition.recovering_from_illness_or_injury in managing
+                                           or ContextFlag.illness in effective_flags(state)))
+    )
+    if _FAMILY_TAGS & set(a.tags):
+        return 0
+    return 1 if fits else 2
+
+
+def todays_behaviours(state: UserState) -> list[Behaviour]:
+    """Goals in plan order; stress puts recovery first. With more than MAX_ACTIVE_BEHAVIOURS goals, the first ones
+    stay and the last slot rotates daily through the rest (burden cap)."""
+    order = [b for b in (state.order or list(Behaviour)) if b in state.current_tier]
+    order += [b for b in Behaviour if b in state.current_tier and b not in order]
+    if state.last_barrier == Barrier.stress and Behaviour.recovery in order:
+        order.remove(Behaviour.recovery)
+        order.insert(0, Behaviour.recovery)
+    cap = config.MAX_ACTIVE_BEHAVIOURS
+    if len(order) <= cap:
+        return order
+    fixed, rest = order[: cap - 1], order[cap - 1 :]
+    return [*fixed, rest[state.rotation % len(rest)]]
 
 
 def _setting_rank(profile: UserProfile, a: Action) -> int:
@@ -265,7 +384,7 @@ def choose_action(
     allowed_at = {
         (w, h): [
             a
-            for a in filter_actions(profile, state, Context(flags=state.context_flags, hour=h), library)
+            for a in filter_actions(profile, state, Context(flags=effective_flags(state), hour=h), library)
             if a.behaviour == behaviour
         ]
         for w, h in options
@@ -274,12 +393,20 @@ def choose_action(
     if not pool:
         return None
     target = min(state.current_tier[behaviour], tier_cap(profile, behaviour))
+    # A Part B barrier (craving, others smoking, no healthy food nearby) prefers its kind of step when one fits.
+    tag = BARRIER_TAG.get(state.last_barrier) if state.last_barrier else None
+    if not (tag and any(tag in a.tags and a.tier <= target for a in pool)):
+        tag = None
+    pool = [a for a in pool if tag is None or tag in a.tags]
     at_or_below = [a.tier for a in pool if a.tier <= target]
     best = max(at_or_below) if at_or_below else min(a.tier for a in pool)
     arms = [
         ScheduledAction(action=a, time_window=w, hour=h, explanation_id=a.id)
         for (w, h), actions in allowed_at.items()
-        for a in sorted((a for a in actions if a.tier == best), key=lambda a: _setting_rank(profile, a))
+        for a in sorted(
+            (a for a in actions if a.tier == best and (tag is None or tag in a.tags)),
+            key=lambda a: (_tag_rank(profile, state, a), _setting_rank(profile, a)),
+        )
     ]
     return (bandit or RulesBandit()).select(arms, state)
 
@@ -290,9 +417,39 @@ def choose_actions(
     library: list[Action] | tuple[Action, ...] | None = None,
     bandit: Bandit | None = None,
 ) -> list[ScheduledAction]:
-    """One action per goal (movement first), each with its prompt window and hour."""
-    picks = (choose_action(profile, state, b, library=library, bandit=bandit) for b in Behaviour)
-    return [a for a in picks if a is not None]
+    """One action per behaviour shown today (plan order, at most MAX_ACTIVE_BEHAVIOURS), with window and hour."""
+    picks = (choose_action(profile, state, b, library=library, bandit=bandit) for b in todays_behaviours(state))
+    return _spread_hours(profile, state, [a for a in picks if a is not None])
+
+
+# Movement and sleep can already share an hour in the simulator (movement moved to the evening); moving one would
+# change run_011, so only clashes involving another behaviour are spread.
+_SIM_BEHAVIOURS = frozenset({Behaviour.movement, Behaviour.sleep})
+
+
+def _spread_hours(profile: UserProfile, state: UserState, scheduled: list[ScheduledAction]) -> list[ScheduledAction]:
+    """When a later action shares an hour with an earlier one, move it 1-3 hours later to a free hour (outside quiet
+    hours, work/post-shift sleep and, for outdoor steps, the heat window). If none is free it stays."""
+    quiet = profile.preferences.quiet_hours
+    busy = state.day_times.busy if state.day_times else []
+    heat = ContextFlag.heat in effective_flags(state)
+
+    def free(h: int, a: Action, used: dict[int, Behaviour]) -> bool:
+        hot = heat and a.setting == ActionSetting.outdoor and config.HEAT_START_HOUR <= h < config.HEAT_END_HOUR
+        return h not in used and not _in_quiet_hours(h, quiet) and not in_busy(h, busy) and not hot
+
+    used: dict[int, Behaviour] = {}
+    out = []
+    for s in scheduled:
+        other = used.get(s.hour)
+        if other is not None and not {other, s.action.behaviour} <= _SIM_BEHAVIOURS:
+            later = next(((s.hour + k) % 24 for k in range(1, config.SPREAD_MAX_SHIFT_H + 1)
+                          if free((s.hour + k) % 24, s.action, used)), None)
+            if later is not None:
+                s = s.model_copy(update={"hour": later})
+        used.setdefault(s.hour, s.action.behaviour)
+        out.append(s)
+    return out
 
 
 def lighter_option(
@@ -307,7 +464,7 @@ def lighter_option(
     target = scheduled.action.tier - 1
     if target < config.MIN_TIER:
         return None
-    allowed = filter_actions(profile, state, Context(flags=state.context_flags, hour=scheduled.hour), library)
+    allowed = filter_actions(profile, state, Context(flags=effective_flags(state), hour=scheduled.hour), library)
     pool = [a for a in allowed if a.behaviour == behaviour and a.tier <= target]
     if not pool:
         return None

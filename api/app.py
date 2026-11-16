@@ -10,24 +10,30 @@ import random
 import secrets
 from collections import Counter
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Annotated, Any, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Response
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from rebound_engine import config as engine_config
+from rebound_engine.calendar import RAMADAN, day_context
 from rebound_engine.engine import Engine
 from rebound_engine.models import (
+    Action,
     Barrier,
     Behaviour,
     CheckinResult,
+    Conditions,
     ConsentGroup,
     ContextFlag,
+    DayContext,
     DayLog,
+    Encouragement,
     EngagementState,
     Event,
     EventType,
@@ -35,13 +41,20 @@ from rebound_engine.models import (
     Language,
     OnboardingPayload,
     Preferences,
+    ReadingLevel,
     ScreeningResult,
+    Shift,
     TodayResult,
     UserProfile,
     UserState,
 )
+from rebound_engine.plan import build_plan
+from rebound_engine.policy import effective_flags
+from rebound_engine.recipes import NOTE as RECIPE_NOTE
+from rebound_engine.recipes import Recipe, load_recipes, suggest_recipe
 from rebound_engine.safety import detect_red_flags
 
+from .community import CommunityEvent, Household, filter_events
 from .demo import (
     DEMO_PERSONAS,
     ORG_DAYS,
@@ -57,13 +70,23 @@ from .demo import (
     org_bodies,
 )
 from .llm_client import BarrierClassifier, default_classifier
-from .messages import HOW_TO_TURN_OFF, render
+from .messages import (
+    HOW_TO_TURN_OFF,
+    onboarding_text,
+    pick,
+    render,
+    render_encouragement,
+    render_reason,
+    render_rotation_note,
+)
 from .store import SQLiteStore, UserMeta, sqlite_path
 
 DEFAULT_TIMEZONE = "Asia/Dubai"
 LOCAL_FRONTEND = "http://localhost:5173"  # allowed only with DEMO_MODE or DEV_MODE
 CATCH_UP_MAX_DAYS = 60  # unopened days filled in on return (docs/ASSUMPTIONS.md, API)
 EMPLOYER_MIN_GROUP = 10  # k for employer aggregates (AGENTS.md §2.6)
+PLAN_REASONS_SHOWN = 3  # the rest are behind "See why" (Task 05: no information dumping)
+RAMADAN_MAX_SHIFT_DAYS = 2  # a "started today / ended" tap may move the table date by at most this many days
 
 
 # ---------- request / response shapes ----------
@@ -102,8 +125,31 @@ class StateOut(BaseModel):
     history: list[DayLog]  # recent days only (engine keeps HISTORY_KEEP_DAYS)
 
 
+class RecipeOut(Recipe):
+    note: str = RECIPE_NOTE  # shown with every recipe
+
+
+class EncouragementOut(BaseModel):
+    """A small pop-up: a real moment and its message (Task 05 Part C)."""
+
+    moment: str
+    message: str
+    behaviour: Behaviour | None = None
+
+
 class TodayOut(TodayResult):
     messages: list[str]  # message_keys rendered in the user's language
+    recipes: dict[str, RecipeOut] = Field(default_factory=dict)  # action id -> suggestion, for cooking steps only
+    encouragement: EncouragementOut | None = None  # today's moment, if one happened
+
+
+class PlanOut(BaseModel):
+    """What the user sees of their plan. Queued behaviours are internal and never included."""
+
+    behaviours: list[Behaviour]  # with daily actions, in order
+    reasons: list[str]  # at most PLAN_REASONS_SHOWN, most important first
+    all_reasons: list[str]  # the full list, for "See why"
+    rotation_note: str | None = None  # only with more goals than daily actions: the third step changes each day
 
 
 class OnboardOut(BaseModel):
@@ -113,6 +159,7 @@ class OnboardOut(BaseModel):
     red_flag: bool
     state: StateOut
     today: TodayOut
+    plan_summary: PlanOut
 
 
 class EventIn(BaseModel):
@@ -123,6 +170,7 @@ class EventIn(BaseModel):
 
 class StateResponse(BaseModel):
     state: StateOut
+    encouragement: EncouragementOut | None = None  # set when this event created a moment (Task 05 Part C)
 
 
 class CheckinIn(BaseModel):
@@ -133,6 +181,13 @@ class CheckinIn(BaseModel):
 
 class CheckinOut(CheckinResult):
     message: str
+
+
+class OnboardingTextOut(BaseModel):
+    questions: dict[str, str]  # health-check question key (Screening field) -> text
+    why_we_ask: dict[str, str]  # field group -> the "why we ask" line
+    reading_level_examples: dict[str, str]  # "standard" / "simple" -> the same step at each level
+    translation_note: str | None  # Arabic only: "draft translation, pending native review"
 
 
 class ExplainOut(BaseModel):
@@ -148,12 +203,16 @@ class SettingsIn(BaseModel):
     preferences: dict[str, Any] | None = None  # partial Preferences, merged then validated
     consents: dict[ConsentGroup, bool] | None = None
     context: dict[ContextFlag, bool] | None = None  # e.g. {"heat": true}, {"illness": false} = "I'm OK now"
+    conditions: Conditions | None = None  # replaces the "Anything you're managing?" answers
+    shifts: list[Shift] | None = None  # replaces the weekly shift pattern; [] clears it. Takes effect the next day
+    ramadan: Literal["started_today", "ended_today"] | None = None  # moon-sighting correction, applies today
 
 
 class SettingsOut(BaseModel):
     preferences: Preferences
     consents: dict[ConsentGroup, bool]
     state: StateOut
+    plan_summary: PlanOut  # re-built from the updated answers
 
 
 class AdvanceOut(BaseModel):
@@ -191,6 +250,7 @@ _EMPTY_GROUP: dict[ConsentGroup, Callable[[], Any]] = {
     ConsentGroup.body: lambda: None,
     ConsentGroup.history: History,
     ConsentGroup.preferences: Preferences,
+    ConsentGroup.conditions: Conditions,
 }
 
 
@@ -200,11 +260,50 @@ def _withdrawn(consents: dict[ConsentGroup, bool]) -> dict[str, Any]:
     return {g.value: _EMPTY_GROUP[g]() for g, ok in consents.items() if not ok and g in _EMPTY_GROUP}
 
 
+def _encouragement_out(e: Encouragement | None, profile: UserProfile) -> EncouragementOut | None:
+    if e is None:
+        return None
+    return EncouragementOut(moment=e.moment, message=render_encouragement(e.moment, profile, e.day),
+                            behaviour=e.behaviour)
+
+
+def _plan_out(profile: UserProfile) -> PlanOut:
+    plan = build_plan(profile)
+    rotating = len(profile.basics.goals) > engine_config.MAX_ACTIVE_BEHAVIOURS
+    note = render_rotation_note(profile) if rotating else None
+    # The rotation note says it already; don't repeat it as a reason.
+    reasons = [render_reason(k, profile) for k in plan.reasons if not (note and k == "rotating")]
+    return PlanOut(behaviours=plan.active, reasons=reasons[:PLAN_REASONS_SHOWN], all_reasons=reasons,
+                   rotation_note=note)
+
+
+def _leveled(action: Action, profile: UserProfile) -> Action:
+    """At reading_level "simple", the title the frontend shows is the plain-language one (Task 05 Part D)."""
+    if profile.preferences.reading_level == ReadingLevel.simple and action.simple:
+        return action.model_copy(update={"title": action.simple})
+    return action
+
+
 def _state_out(s: UserState) -> StateOut:
     return StateOut(
         day=s.day, habit_strength=s.habit_strength, engagement_state=s.engagement_state, tiers=s.current_tier,
-        context_flags=s.context_flags, checkin_due=s.checkin_due, history=s.history,
+        context_flags=effective_flags(s), checkin_due=s.checkin_due, history=s.history,
     )
+
+
+def local_date_of(meta: UserMeta, day: int) -> date:
+    """Engine day -> local date. Includes demo time travel, so `advance` moves the calendar too."""
+    return meta.onboard_date + timedelta(days=day - 1)
+
+
+def _ramadan_shift(today: date, tap: str) -> tuple[str, int] | None:
+    """("start"/"end", days) to move the nearest Umm al-Qura date onto today; None if no Ramadan is that close."""
+    field, index = ("ramadan_start_shift", 0) if tap == "started_today" else ("ramadan_end_shift", 1)
+    for dates in RAMADAN:
+        shift = (today - dates[index]).days
+        if abs(shift) <= RAMADAN_MAX_SHIFT_DAYS:
+            return field, shift
+    return None
 
 
 def _hash(token: str) -> str:
@@ -226,7 +325,16 @@ def create_app(
     dashboard_path: Path | None = None,
 ) -> FastAPI:
     store = SQLiteStore(sqlite_path(database_url))
-    engine = Engine(store=store)  # rules mode, no risk model (hook off: ASSUMPTIONS.md, "Arm D")
+
+    class UserCalendar:
+        """Engine day -> the user's local date (onboarding day = day 1), then the offline calendar rules."""
+
+        def day(self, profile: UserProfile, day: int) -> DayContext:
+            meta = store.get_meta(profile.user_id)
+            return day_context(profile, local_date_of(meta, day), meta.ramadan_start_shift, meta.ramadan_end_shift)
+
+    # Rules mode, no risk model (hook off: ASSUMPTIONS.md, "Arm D"); calendar context on (the simulator has none).
+    engine = Engine(store=store, calendar=UserCalendar())
     classifier = classifier or default_classifier()
 
     app = FastAPI(title="Rebound API", version="0.1.0")
@@ -269,9 +377,19 @@ def create_app(
 
     def today_out(meta: UserMeta, result: TodayResult) -> TodayOut:
         profile = store.get_profile(meta.user_id)
-        return TodayOut.model_validate(
-            {**result.model_dump(), "messages": [render(k, profile) for k in result.message_keys]}
-        )
+        flags = effective_flags(engine.get_state(meta.user_id))
+        recipes = {
+            s.action.id: RecipeOut(**r.model_dump())
+            for s in result.actions if (r := suggest_recipe(profile, s.action, result.day, flags))
+        }
+        actions = [s.model_copy(update={"action": _leveled(s.action, profile),
+                                        "lighter": s.lighter and _leveled(s.lighter, profile)})
+                   for s in result.actions]
+        return TodayOut.model_validate({
+            **result.model_dump(), "actions": [s.model_dump() for s in actions],
+            "messages": [render(k, profile) for k in result.message_keys], "recipes": recipes,
+            "encouragement": _encouragement_out(result.encouragement, profile),
+        })
 
     @app.post("/users", status_code=201, response_model=OnboardOut)
     def onboard(body: OnboardIn) -> OnboardOut:
@@ -290,7 +408,12 @@ def create_app(
         return OnboardOut(
             user_id=result.user_id, token=token, screening=result.screening, red_flag=result.red_flag,
             state=_state_out(engine.get_state(result.user_id)), today=today,
+            plan_summary=_plan_out(store.get_profile(result.user_id)),
         )
+
+    @app.get("/users/{user_id}/plan", response_model=PlanOut)
+    def plan(meta: Authed) -> PlanOut:
+        return _plan_out(store.get_profile(meta.user_id))
 
     @app.get("/users/{user_id}/today", response_model=TodayOut)
     def today(meta: Authed) -> TodayOut:
@@ -303,7 +426,11 @@ def create_app(
         if body.action_id not in state.pending:
             raise HTTPException(409, "not one of today's open actions (unknown, or already answered)")
         event = Event(user_id=meta.user_id, day=state.day, type=EventType(body.type), action_id=body.action_id)
-        return StateResponse(state=_state_out(engine.record(event)))
+        before = state.encouragement
+        after = engine.record(event)
+        fresh = after.encouragement if after.encouragement != before else None
+        return StateResponse(state=_state_out(after),
+                             encouragement=_encouragement_out(fresh, store.get_profile(meta.user_id)))
 
     @app.post("/users/{user_id}/checkin", response_model=CheckinOut)
     def checkin(body: CheckinIn, meta: Authed) -> CheckinOut:
@@ -320,7 +447,9 @@ def create_app(
         result = engine.checkin(meta.user_id, barriers, free_text=body.free_text, replace_pending=True)
         store.save_meta(meta.model_copy(update={"last_checkin_day": day}))
         profile = store.get_profile(meta.user_id)
-        return CheckinOut.model_validate({**result.model_dump(), "message": render(result.message_key, profile)})
+        adjusted = [_leveled(a, profile).model_dump() for a in result.adjusted_actions]
+        return CheckinOut.model_validate({**result.model_dump(), "adjusted_actions": adjusted,
+                                          "message": render(result.message_key, profile)})
 
     @app.get("/users/{user_id}/state", response_model=StateOut)
     def get_state(meta: Authed) -> StateOut:
@@ -336,17 +465,32 @@ def create_app(
             raise HTTPException(409, "coaching stays paused after a safety concern until a person has checked in")
         if (body.consents or {}).get(ConsentGroup.screening) is False:
             raise HTTPException(409, "the health check is needed for a safe plan; delete your account instead")
+        ramadan_fix = None
+        if body.ramadan is not None:
+            ramadan_fix = _ramadan_shift(local_date_of(meta, engine.get_state(uid).day), body.ramadan)
+            if ramadan_fix is None:
+                raise HTTPException(409, f"no Ramadan within {RAMADAN_MAX_SHIFT_DAYS} days of today in the calendar")
         try:
             prefs = Preferences.model_validate({**profile.preferences.model_dump(), **(body.preferences or {})})
         except ValidationError as e:
             raise RequestValidationError(e.errors(include_url=False)) from None
         consents = {**profile.consents, **(body.consents or {})}
-        profile = profile.model_copy(update={"preferences": prefs, "consents": consents, **_withdrawn(consents)})
+        update: dict[str, Any] = {"preferences": prefs, "consents": consents}
+        if body.conditions is not None:
+            update["conditions"] = body.conditions
+        if body.shifts is not None:  # takes effect when the next day opens
+            update["basics"] = profile.basics.model_copy(update={"shifts": body.shifts or None})
+        profile = profile.model_copy(update={**update, **_withdrawn(consents)})
         store.save_profile(profile)
         for flag, on in (body.context or {}).items():
             engine.set_context(uid, flag, on)
+        if ramadan_fix is not None:
+            field, shift = ramadan_fix
+            store.save_meta(meta.model_copy(update={field: shift}))
+        if ramadan_fix is not None or "iftar_time" in (body.preferences or {}):
+            engine.refresh_context(uid)  # applies today: today's open steps become fasting-safe at the right hour
         return SettingsOut(preferences=profile.preferences, consents=profile.consents,
-                           state=_state_out(engine.get_state(uid)))
+                           state=_state_out(engine.get_state(uid)), plan_summary=_plan_out(profile))
 
     @app.get("/users/{user_id}/export", response_model=ExportOut)
     def export(meta: Authed) -> ExportOut:
@@ -362,15 +506,43 @@ def create_app(
         engine.delete_user(meta.user_id)  # SQLiteStore also removes user_meta
         return Response(status_code=204)
 
+    @app.get("/users/{user_id}/community/events", response_model=list[CommunityEvent])
+    def community_events(
+        meta: Authed, household: Household | None = None, behaviour: Behaviour | None = None,
+        city: str | None = Query(default=None, max_length=40),
+    ) -> list[CommunityEvent]:
+        """Read-only events that fit the user (goals, women-only spaces, mobility, language). `household` and `city`
+        are request filters only: no location tracking, nothing stored."""
+        return filter_events(store.get_profile(meta.user_id), household=household, behaviour=behaviour, city=city)
+
+    @app.get("/recipes", response_model=list[RecipeOut])
+    def recipes(tag: str | None = None) -> list[RecipeOut]:
+        """The curated recipe set (general content, no auth), optionally filtered by one tag."""
+        return [RecipeOut(**r.model_dump()) for r in load_recipes() if tag is None or tag in r.tags]
+
+    @app.get("/recipes/{recipe_id}", response_model=RecipeOut)
+    def recipe(recipe_id: str) -> RecipeOut:
+        found = next((r for r in load_recipes() if r.id == recipe_id), None)
+        if found is None:
+            raise HTTPException(404, "unknown recipe")
+        return RecipeOut(**found.model_dump())
+
     @app.get("/actions/{action_id}/explain", response_model=ExplainOut)
-    def explain(action_id: str, lang: Language = Language.en) -> ExplainOut:
+    def explain(action_id: str, lang: Language = Language.en,
+                reading_level: ReadingLevel = ReadingLevel.standard) -> ExplainOut:
         action = next((a for a in engine.library if a.id == action_id), None)
         if action is None:
             raise HTTPException(404, "unknown action")
         return ExplainOut(
             bct_code=action.bct_code, bct_name=action.bct_name, rationale=action.rationale, limits=action.limits,
-            how_to_turn_off=HOW_TO_TURN_OFF["ar" if lang == Language.ar else "en"],
+            how_to_turn_off=pick(HOW_TO_TURN_OFF, lang, reading_level),
         )
+
+    @app.get("/content/onboarding", response_model=OnboardingTextOut)
+    def onboarding_content(lang: Language = Language.en,
+                           reading_level: ReadingLevel = ReadingLevel.standard) -> OnboardingTextOut:
+        """Health-check questions, "why we ask" lines and a reading-level example, before the user exists."""
+        return OnboardingTextOut(**onboarding_text(lang, reading_level))
 
     # ---------- dashboards: aggregates only, never individual data ----------
 

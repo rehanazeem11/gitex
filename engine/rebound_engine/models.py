@@ -1,8 +1,8 @@
 """Pydantic models. Onboarding fields are grouped as in AGENTS.md §4 so the UI can show them as steps."""
 
-from datetime import datetime, time
+from datetime import date, datetime, time
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -23,6 +23,10 @@ class Sex(StrEnum):
 class Behaviour(StrEnum):
     movement = "movement"
     sleep = "sleep"
+    # Task 05 Part B. The lapse-risk features stay on movement and sleep (risk/features.py RISK_BEHAVIOURS).
+    nutrition = "nutrition"
+    smoking = "smoking"
+    recovery = "recovery"
 
 
 class ScheduleType(StrEnum):
@@ -54,6 +58,11 @@ class Barrier(StrEnum):
     social_family = "social_family"
     forgot = "forgot"
     other = "other"
+    # Task 05 Part B (not used by the simulator or the risk features)
+    craving = "craving"
+    stress = "stress"
+    others_smoking = "others_smoking"
+    no_healthy_food_nearby = "no_healthy_food_nearby"
 
 
 class SmokingStatus(StrEnum):
@@ -105,11 +114,39 @@ class Accessibility(StrEnum):
     screen_reader = "screen_reader"
 
 
+class Household(StrEnum):
+    """Who the user lives with (Task 05 Part E). Nothing is stored about the other people."""
+
+    alone = "alone"
+    family = "family"
+    children = "children"
+    older_relatives = "older_relatives"
+
+
+class ReadingLevel(StrEnum):
+    standard = "standard"
+    simple = "simple"  # short words, one idea per sentence (Task 05 Part D)
+
+
 class ConsentGroup(StrEnum):
     body = "body"
     screening = "screening"
     history = "history"
     preferences = "preferences"
+    conditions = "conditions"
+
+
+class Condition(StrEnum):
+    """ "Anything you're managing?" chips (Task 05). Pregnancy and smoking come from their existing fields."""
+
+    diabetes = "diabetes"
+    high_blood_pressure = "high_blood_pressure"
+    back_or_joint_pain = "back_or_joint_pain"
+    stress = "stress"
+    recovering_from_illness_or_injury = "recovering_from_illness_or_injury"
+
+
+PlanBehaviour = Behaviour  # Part A's separate enum, merged into Behaviour in Part B
 
 
 class ActionSetting(StrEnum):
@@ -132,6 +169,17 @@ class ContextFlag(StrEnum):
     travel = "travel"
     illness = "illness"
     paused = "paused"
+    eid = "eid"  # set by the calendar only (Task 05 A2): rest-friendly days
+
+
+class Weekday(StrEnum):
+    mon = "mon"
+    tue = "tue"
+    wed = "wed"
+    thu = "thu"
+    fri = "fri"
+    sat = "sat"
+    sun = "sun"
 
 
 class TimeWindow(StrEnum):
@@ -153,6 +201,7 @@ class EventType(StrEnum):
     red_flag = "red_flag"
     context_change = "context_change"
     risk_alert = "risk_alert"
+    encouragement = "encouragement"  # Task 05 Part C: payload {moment, behaviour?}
 
 
 class DayOutcome(StrEnum):
@@ -176,6 +225,14 @@ class TimeRange(_Input):
     end: time  # may be earlier than start (crosses midnight)
 
 
+class Shift(_Input):
+    """One line of a weekly shift pattern, e.g. Sun-Thu 22:00-06:00 (end before start = overnight)."""
+
+    days: list[Weekday] = Field(min_length=1)  # the day each shift starts
+    start: time
+    end: time
+
+
 class Basics(_Input):
     language: Language
     age_years: int = Field(ge=18, le=100)
@@ -187,6 +244,8 @@ class Basics(_Input):
     work_hours: list[TimeRange] = Field(default_factory=list)
     # Shift workers: one list of work ranges per day of their rotation.
     shift_cycle: list[list[TimeRange]] | None = None
+    # Real shift timings (Task 05 A2), editable in settings. Used only with a calendar (the API), never in the sim.
+    shifts: list[Shift] | None = None
 
     @field_validator("goals")
     @classmethod
@@ -238,10 +297,31 @@ class Preferences(_Input):
     social: SocialPreference = SocialPreference.either
     space_preference: SpacePreference = SpacePreference.any
     fasting_ramadan: bool = False
+    iftar_time: time | None = None  # overrides the Abu Dhabi sunset table (Task 05 A2)
     notification_window: TimeRange | None = None
     quiet_hours: TimeRange | None = None
     channel: Channel = Channel.app
     accessibility: list[Accessibility] = Field(default_factory=list)
+    encouragement: bool = True  # Task 05 Part C: small "well done" moments; users can turn them off
+    reading_level: ReadingLevel = ReadingLevel.standard  # Task 05 Part D: "simple" shows the plain-language texts
+    read_aloud: bool = False  # the frontend reads texts aloud with the browser's speech; the API only stores it
+    # Task 05 Part E, all optional. Unset = no family steps, exactly as before (every simulator persona).
+    household: Household | None = None
+    caregiver: bool = False  # cares for someone at home -> short caregiver pause first, one plan reason
+    family_fasting: bool = False  # the family fasts together -> family-iftar steps in Ramadan
+
+
+class Conditions(_Input):
+    """Optional and sensitive. No free-text medical history."""
+
+    managing: list[Condition] = Field(default_factory=list)
+
+    @field_validator("managing")
+    @classmethod
+    def _unique(cls, v: list[Condition]) -> list[Condition]:
+        if len(set(v)) != len(v):
+            raise ValueError("conditions must not repeat")
+        return v
 
 
 class OnboardingPayload(_Input):
@@ -250,6 +330,7 @@ class OnboardingPayload(_Input):
     screening: Screening
     baseline: Baseline
     history: History = Field(default_factory=History)
+    conditions: Conditions = Field(default_factory=Conditions)
     preferences: Preferences = Field(default_factory=Preferences)
     consents: dict[ConsentGroup, bool] = Field(default_factory=dict)
 
@@ -257,6 +338,8 @@ class OnboardingPayload(_Input):
     def _pregnancy_only_for_female(self) -> "OnboardingPayload":
         if self.basics.sex != Sex.female and self.screening.pregnant is not None:
             raise ValueError("pregnant is only asked when sex is female")
+        if Behaviour.smoking in self.basics.goals and self.history.smoking_status != SmokingStatus.current:
+            raise ValueError("the smoking goal is for people who currently smoke")
         return self
 
 
@@ -293,6 +376,11 @@ class Action(BaseModel):
     seated_variant_id: str | None = None
     contraindications: list[str] = Field(default_factory=list)  # screening question names
     duration_min: int = Field(gt=0)
+    # Task 05 Part B: plain-language variant, icon key (actions.ICONS), and tags the rules prefer (e.g. "substitution",
+    # "cue_avoidance", "no_shopping", "ramadan_only", "cooking", "diabetes", "not_for_diabetes", "after_illness").
+    simple: LocalizedText | None = None
+    icon: str | None = None
+    tags: list[str] = Field(default_factory=list)
 
 
 # ---------- Events and state ----------
@@ -311,6 +399,37 @@ class DayLog(BaseModel):
     behaviour: Behaviour | None = None
     action_id: str | None = None
     outcome: DayOutcome
+
+
+Moment = Literal[
+    "first_day_done", "three_good_days", "comeback", "habit_strength_50", "first_week_done", "tried_something_new",
+]
+
+
+class Encouragement(BaseModel):
+    """Task 05 Part C: a real moment worth a small "well done". Never a count, never a streak."""
+
+    moment: Moment
+    day: int
+    behaviour: Behaviour | None = None  # for habit_strength_50 and tried_something_new
+
+
+class DayTimes(BaseModel):
+    """One day's timings from real shifts (Task 05 A2). Hours 0-23; busy ranges are [start, end), may wrap."""
+
+    wake: int
+    sleep: int
+    sleep_prompt: int | None = None  # after a night shift: wind-down as the shift ends, before their sleep
+    busy: list[tuple[int, int]] = Field(default_factory=list)  # work, and sleep after a night shift
+
+
+class DayContext(BaseModel):
+    """What the calendar works out for one user-day (Task 05 A2)."""
+
+    local_date: date
+    flags: set[ContextFlag] = Field(default_factory=set)
+    iftar_hour: int | None = None  # set during Ramadan for fasting users
+    day_times: DayTimes | None = None
 
 
 class UserState(BaseModel):
@@ -340,6 +459,20 @@ class UserState(BaseModel):
     last_risk_reasons: list[str] = Field(default_factory=list)
     last_risk_checkin_day: int = -999
     last_checkin_sent_day: int = -999  # at most one check-in message per day, of any kind
+    # Task 05 A2, set from the calendar when a day opens (only when the engine has one). Explicit flags stay in
+    # context_flags; the calendar never removes them.
+    auto_flags: set[ContextFlag] = Field(default_factory=set)
+    iftar_hour: int | None = None
+    day_times: DayTimes | None = None
+    # Task 05 Part B: goals in plan order (most important first) and a day counter that rotates extra goals when
+    # there are more than MAX_ACTIVE_BEHAVIOURS. Empty order = Behaviour order (movement, sleep, …).
+    order: list[Behaviour] = Field(default_factory=list)
+    rotation: int = 0
+    # Task 05 Part C (observation only: nothing here changes which actions are chosen)
+    encouragement: Encouragement | None = None  # the latest one; shown on its own day
+    moments: dict[str, int] = Field(default_factory=dict)  # moment key -> day it last fired
+    done_actions: set[str] = Field(default_factory=set)  # action ids completed at least once
+    slip_day: int = -1  # last day the state entered drifting or lapsed
 
 
 class Context(BaseModel):
@@ -351,12 +484,25 @@ class Context(BaseModel):
 
 
 class ScreeningResult(BaseModel):
-    flag: bool
+    flag: bool  # any "yes", or a condition chip that maps onto a health-check question
     positive: list[str]  # screening questions answered "yes"
     movement_tier_cap: int
     see_doctor: bool  # chest pain or dizziness/fainting: also start with sleep/gentle only
     pregnancy_safe_only: bool
     seated_only: bool
+    # Questions whose rules apply: `positive` plus the equivalents of condition chips (e.g. high blood pressure -> Q1).
+    contraindicated: list[str] = Field(default_factory=list)
+
+
+class PlanSummary(BaseModel):
+    """What the engine will do for this person and why (Task 05 Part A). Derived from the profile alone."""
+
+    active: list[Behaviour]  # behaviours with daily actions, in order (at most MAX_ACTIVE_BEHAVIOURS)
+    queued: list[PlanBehaviour]  # internal until they have actions (Part B): never shown to users
+    queued_reasons: list[str]  # internal, same rule
+    start_tiers: dict[Behaviour, int]
+    movement_tier_cap: int
+    reasons: list[str]  # user-facing reason keys, most important first (the API shows at most 3)
 
 
 class StateSummary(BaseModel):
@@ -389,6 +535,7 @@ class TodayResult(BaseModel):
     state_summary: StateSummary
     risk: float | None = None  # lapse risk for the next 7 days, if a risk model is loaded
     risk_reasons: list[str] = Field(default_factory=list)  # plain-language, only when an alert fired
+    encouragement: Encouragement | None = None  # today's, if one fired (Task 05 Part C)
 
 
 class CheckinResult(BaseModel):

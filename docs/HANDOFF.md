@@ -54,13 +54,101 @@ check-ins answered only on days the app is open. run_007 is the earlier world (c
    eval set. See "For the LLM layer" below.
 3. **Tue 17:** deploy. **Wed 18:** docs + demo video. **Thu 19:** buffer. **Fri 20:** submit.
 
+### Frontend changes (Task 05)
+- **Part A, personal plan:**
+  - **Onboarding:** add one optional "Anything you're managing?" screen of tap-to-select chips with Skip. Put it on
+    an existing screen (e.g. with the health check) so sign-up stays ≤ 5 screens. Send
+    `conditions: {managing: [...]}` with values `diabetes`, `high_blood_pressure`, `back_or_joint_pain`, `stress`,
+    `recovering_from_illness_or_injury`. Pregnancy and smoking chips map to `screening.pregnant` and
+    `history.smoking_status`. Consent group: `conditions`.
+  - **Plan card:** `POST /users` now returns `plan_summary: {behaviours, reasons, all_reasons}`, and
+    `GET /users/{id}/plan` returns the same. Show `reasons` (at most 3 short lines), with `all_reasons` behind a
+    "See why" link. The text is already in the user's language.
+  - **Settings:** `PATCH /settings` takes `conditions` and returns the re-built `plan_summary`.
+- **Part A2, automatic context (no manual Ramadan/heat switches for users):**
+  - **Ramadan, Eid, heat:** turn on by themselves from the date. `GET /state` `context_flags` shows `ramadan`, `eid`
+    or `heat`; `today.messages` includes the Eid greeting.
+  - **Moon-sighting correction:** for fasting users during Ramadan's first and last days, show two buttons, "Ramadan
+    started today" and "Ramadan is over (today is Eid)". They call `PATCH /settings` with
+    `{"ramadan": "started_today" | "ended_today"}` and apply the same day; 409 means no Ramadan is near.
+  - **Preferences:** `preferences.iftar_time` ("HH:MM") lets users adjust iftar.
+  - **Shifts:** shift workers enter a weekly pattern, `basics.shifts: [{days: ["sun",…], start, end}]`, at onboarding
+    or with `PATCH /settings {"shifts": [...]}` (`[]` clears it). Windows move the next day.
+  - **Demo panel:** the Ramadan and heat-wave demo buttons keep using `advance` scenarios; they're overrides.
+- **Part B, new behaviours:**
+  - **Onboarding goals:** offer all five: movement, sleep, nutrition, smoking (only show it if `smoking_status` is
+    `current`) and recovery.
+  - **Today:** at most 3 cards a day, in plan order. With more goals, the third card changes daily; show `plan_summary.rotation_note` (already in the user's language) on the plan card. Each action now
+    has `simple` (plain title), `icon` (fixed key) and `tags`.
+  - **Recipes:** `today.recipes` maps an action id to a recipe for cooking steps; show it with its `note`
+    ("General guidance, not medical advice"). There's also a browsable `GET /recipes?tag=`.
+  - **Check-in:** add buttons for `craving`, `stress`, `others_smoking` and `no_healthy_food_nearby`.
+- **Community events (read-only):** a "Community" page reading
+  `GET /users/{id}/community/events` with the Bearer token. It's already filtered to the user's goals,
+  women-only preference, mobility (wheelchair users see wheelchair-accessible events only; "some" limitation sees them first) and language. Optional
+  filters: `household`, `behaviour`, `city`. No user posts and no location tracking.
+  - **Real programmes:** show "Source" (link) and "Checked on <last_checked>", plus a line asking users to confirm
+    times with the organiser.
+  - **Examples:** entries with `example: true` must keep their "Example:" title and be visibly marked, never shown
+    as real events.
+- **Part C, encouragement:** `POST /events` and `GET /today` may return
+  `encouragement: {moment, message, behaviour?}`. Show it as a small, dismissible pop-up, without counts or
+  confetti-style "streak" visuals. It's at most one a day. Settings has a toggle, `preferences.encouragement`
+  (default on).
+- **Part D, health literacy:**
+  - **Reading level:** in onboarding, ask "How should we write things?" and show the two examples from
+    `GET /content/onboarding` → `reading_level_examples`. Send `preferences.reading_level`: `standard` | `simple`; it
+    can be changed in Settings. With `simple`, the API already sends the plain texts (action titles, messages,
+    reasons, encouragement). There's nothing to switch in the frontend.
+  - **Health check and "why we ask":** take the texts from `GET /content/onboarding?lang=&reading_level=`
+    (`questions`, `why_we_ask`) instead of hard-coding them.
+  - **Read aloud:** a Settings toggle, `preferences.read_aloud`. When on, show a speaker button on each card that
+    reads the text with the browser's `speechSynthesis` (`lang` "ar-AE" or "en-US"). No API call.
+  - **Icons:** every action has an `icon` key from a fixed list (`walk`, `stretch`, `seat`, `balance`, `moon`, `sun`,
+    `bed`, `water`, `plate`, `fruit`, `cup`, `cook`, `basket`, `clock`, `no_smoking`, `hand`, `door`, `breath`,
+    `phone_off`, `rest`, `family`). Map each to one icon.
+  - **Arabic label:** when the language is Arabic, show `translation_note` ("Draft translation, pending native
+    review") in Settings and on the onboarding welcome screen.
+- **Part E, family:**
+  - **Onboarding (optional, skippable):** "Who lives with you?" (`preferences.household`: `alone`, `family`,
+    `children`, `older_relatives`), "Do you care for someone at home?" (`preferences.caregiver`) and, for people who
+    fast, "Does your family fast together?" (`preferences.family_fasting`). All three can be changed in Settings.
+  - **Check-in:** add a "Family things" button that sends `social_family`. With a family at home the reply is the
+    family one, and today's step may become a family step.
+  - **Icons:** family steps use the `family`, `water`, `fruit`, `plate`, `no_smoking` and `rest` icons.
+- Re-generate types from `api/openapi.json`.
+
+## For the pitch: how Parts A–E answer the brief
+
+The brief asks for plans built from each person's goals, preferences, health context and data, across movement,
+nutrition, sleep, smoking and recovery, and for people of every health literacy level and family situation.
+**Part A** builds a personal plan from the health check and what someone is managing, and says why in plain
+reasons. **Part A2** fits the plan to life in the UAE without manual switches: Ramadan, Eid, summer heat, iftar time
+and real shift patterns. **Part B** covers all five behaviours the brief names, with at most three small steps a day
+and recipes from local kitchens. **Part C** replaces streaks with small moments of encouragement, so a missed day
+never feels like losing everything. **Part D** makes it readable for everyone: a simple reading level (tested at
+grade 6 or below), Arabic and English, icons and read-aloud. **Part E** brings in the family: family steps, family
+iftar, a shorter start for caregivers, and a family reply when family life gets in the way.
+
+## Future scope (not in the prototype)
+
+- **Wearable integration** through a native app (Apple Health, Health Connect); the web app can't read them. The
+  API's input side is the next step (`POST /users/{id}/signals`, Task 05 "Later").
+- **Nearby healthy options on a map** (OpenStreetMap: greengrocers, supermarkets, parks), opt-in, location never
+  stored; offered for the `no_healthy_food_nearby` barrier.
+- **Chat nudges** (WhatsApp-style) for people who stop opening the app, triggered by the lapse-risk score; the
+  run_008 result points here rather than to in-app offers.
+- **Moderated community groups and support buddies** (a buddy sees only good news), instead of open user posts.
+- **User-submitted recipes**, reviewed before publishing.
+- **Live weather for heat mode**, replacing the fixed May–September rule.
+
 ### For the frontend (Task 04)
 - **Types:** generate them from `api/openapi.json` (includes the demo routes). Run the API with
   `uvicorn api.main:app --reload`; set `DEV_MODE=true` (or `DEMO_MODE=true`) in `.env` so `http://localhost:5173` is
   allowed by CORS.
 - **Auth:** `POST /users` returns `token` once. Store it; send `Authorization: Bearer <token>` on every
   `/users/{id}/*` and `/demo/users/{id}/advance` call. A 401 means a lost or wrong token.
-- **Today:** `actions[]` (movement first, then sleep), each with `hour` and `explanation_id`; `messages[]` are already
+- **Today:** `actions[]` (plan order, at most 3 a day), each with `hour` and `explanation_id`; `messages[]` are already
   rendered in the user's language. After a check-in, `adjusted_actions[]` *replace* today's actions; re-fetch `/today`.
 - **Check-in:** at most one per day (409 on a second); free text is optional and a red flag always gets through.
   On `red_flag: true`, show `message` (care guidance, 998 and 800 SAKINA) and no coaching.
@@ -119,9 +207,9 @@ cp .env.example .env        # only needed from Task 03 on; fill in locally, neve
 **Check it works** (from the repo root)
 ```bash
 ruff check engine sim api
-pytest engine/tests          # 165 tests
-pytest sim/tests             # 47 tests
-pytest api/tests             # 57 tests
+pytest engine/tests          # 282 tests
+pytest sim/tests             # 50 tests
+pytest api/tests             # 120 tests
 python -m rebound_engine.demo --days 30 --seed 1
 ```
 

@@ -3,12 +3,15 @@
 from dataclasses import dataclass
 
 import numpy as np
-from rebound_engine.actions import default_library
 from rebound_engine.models import Barrier, OnboardingPayload, PastHelper
 from rebound_engine.safety import SCREENING_QUESTIONS, SEE_DOCTOR_QUESTIONS
 
-BCT_CODES = sorted({a.bct_code for a in default_library()})
-BARRIERS = [b.value for b in Barrier if b != Barrier.other]
+# Frozen to the movement and sleep BCT codes of run_011. Each persona draws one random number per code, so a new
+# code in the library (e.g. 3.1 from the Task 05 Part E family steps) would shift every later draw. Never derive
+# this from the library; actions with other codes get responsiveness 0 (user_model uses .get).
+BCT_CODES = ["1.4", "2.3", "7.1", "8.1", "8.3", "8.7"]
+BARRIERS = [b.value for b in (Barrier.time, Barrier.energy_fatigue, Barrier.illness_pain, Barrier.schedule_change,
+                              Barrier.environment, Barrier.low_motivation, Barrier.social_family, Barrier.forgot)]
 SEGMENTS = ("schedule_type", "language", "mobility_limitation", "health_literacy")
 
 

@@ -11,6 +11,8 @@ actions:
       en: "Walk around your home for 5 minutes"
       ar: "امشِ في منزلك لمدة 5 دقائق"
       ar_reviewed: false
+    simple: {en: "Walk at home for 5 minutes.", ar: "امشِ في البيت 5 دقائق.", ar_reviewed: false}
+    icon: walk
     bct_code: "8.7"
     bct_name: "Graded tasks"
     rationale: "Starting very small makes the habit easy to begin; we build up from here."
@@ -29,6 +31,8 @@ actions:
       en: "Take a 5-minute walk outside"
       ar: "تمشَّ في الخارج لمدة 5 دقائق"
       ar_reviewed: false
+    simple: {en: "Walk outside for 5 minutes.", ar: "امشِ خارج البيت 5 دقائق.", ar_reviewed: false}
+    icon: walk
     bct_code: "8.7"
     bct_name: "Graded tasks"
     rationale: "A short, easy walk is a first step you can repeat every day."
@@ -47,6 +51,8 @@ actions:
       en: "Balance practice: stand on one foot holding a chair, 3 times each side"
       ar: "تمرين توازن: قف على قدم واحدة مع الإمساك بكرسي، 3 مرات لكل جهة"
       ar_reviewed: false
+    simple: {en: "Hold a chair. Stand on one foot. Do it 3 times on each side.", ar: "أمسك كرسياً. قف على قدم واحدة. كرّرها 3 مرات لكل قدم.", ar_reviewed: false}
+    icon: balance
     bct_code: "8.1"
     bct_name: "Behavioral practice/rehearsal"
     rationale: "Practising balance a little each day keeps everyday movement steady and safe."
@@ -65,6 +71,8 @@ actions:
       en: "Seated arm and leg raises for 5 minutes"
       ar: "ارفع ذراعيك وساقيك وأنت جالس لمدة 5 دقائق"
       ar_reviewed: false
+    simple: {en: "Sit and lift your arms and legs for 5 minutes.", ar: "اجلس وارفع ذراعيك وساقيك 5 دقائق.", ar_reviewed: false}
+    icon: seat
     bct_code: "8.7"
     bct_name: "Graded tasks"
     rationale: "Movement you can do from a chair still builds the habit and your strength."
@@ -84,6 +92,8 @@ actions:
       en: "March in place for 10 minutes, right after something you already do daily"
       ar: "سِر في مكانك لمدة 10 دقائق بعد شيء تفعله يوميًا"
       ar_reviewed: false
+    simple: {en: "March on the spot for 10 minutes. Do it after something you do each day.", ar: "سِر في مكانك 10 دقائق بعد عمل تقوم به كل يوم.", ar_reviewed: false}
+    icon: walk
     bct_code: "1.4"
     bct_name: "Action planning"
     rationale: "Deciding exactly when and where you'll move makes it far more likely to happen."
@@ -102,6 +112,8 @@ actions:
       en: "Go for a 10-minute brisk walk at a time you choose now"
       ar: "امشِ بخطى سريعة لمدة 10 دقائق في وقت تحدده الآن"
       ar_reviewed: false
+    simple: {en: "Pick a time now. Then walk fast for 10 minutes.", ar: "اختر وقتاً الآن. ثم امشِ بسرعة 10 دقائق.", ar_reviewed: false}
+    icon: walk
     bct_code: "1.4"
     bct_name: "Action planning"
     rationale: "Planning the time in advance turns a good intention into a plan."
@@ -120,6 +132,8 @@ actions:
       en: "10 minutes of seated cardio: arm punches and leg extensions"
       ar: "10 دقائق من التمارين وأنت جالس: لكمات بالذراعين ومدّ الساقين"
       ar_reviewed: false
+    simple: {en: "Sit and move for 10 minutes. Punch the air and stretch your legs.", ar: "اجلس وتحرّك 10 دقائق. حرّك ذراعيك ومدّ ساقيك.", ar_reviewed: false}
+    icon: seat
     bct_code: "8.7"
     bct_name: "Graded tasks"
     rationale: "A slightly longer seated session is the next small step up."
@@ -139,6 +153,8 @@ actions:
       en: "20-minute low-impact home workout, then tick it off"
       ar: "تمرين منزلي خفيف التأثير لمدة 20 دقيقة، ثم سجّله"
       ar_reviewed: false
+    simple: {en: "Do 20 minutes of easy exercise at home. Then tick it off.", ar: "تمرّن تمريناً سهلاً 20 دقيقة في البيت. ثم سجّله.", ar_reviewed: false}
+    icon: stretch
     bct_code: "2.3"
     bct_name: "Self-monitoring of behaviour"
     rationale: "Recording what you did helps you see your progress build over time."
@@ -157,6 +173,8 @@ actions:
       en: "20-minute brisk walk with 3 faster minutes, then tick it off"
       ar: "مشي سريع لمدة 20 دقيقة مع 3 دقائق أسرع، ثم سجّله"
       ar_reviewed: false
+    simple: {en: "Walk fast for 20 minutes. Go faster for 3 of them. Then tick it off.", ar: "امشِ بسرعة 20 دقيقة، وأسرع أكثر 3 دقائق منها. ثم سجّله.", ar_reviewed: false}
+    icon: walk
     bct_code: "2.3"
     bct_name: "Self-monitoring of behaviour"
     rationale: "Tracking your walks shows you how far you've come."
@@ -174,6 +192,8 @@ actions:
       en: "20-minute easy-pace indoor walk, e.g. in a mall or corridor"
       ar: "مشي بوتيرة هادئة لمدة 20 دقيقة في مكان مغلق، مثل مركز تسوق"
       ar_reviewed: false
+    simple: {en: "Walk inside at an easy pace for 20 minutes, like in a mall.", ar: "امشِ بهدوء 20 دقيقة داخل مبنى، مثل مركز تسوق.", ar_reviewed: false}
+    icon: walk
     bct_code: "8.7"
     bct_name: "Graded tasks"
     rationale: "A longer walk at an easy pace builds endurance without strain."
@@ -192,6 +212,8 @@ actions:
       en: "30-minute moderate home workout at your usual time"
       ar: "تمرين منزلي معتدل لمدة 30 دقيقة في وقتك المعتاد"
       ar_reviewed: false
+    simple: {en: "Exercise at home for 30 minutes. Do it at your usual time.", ar: "تمرّن في البيت 30 دقيقة في وقتك المعتاد.", ar_reviewed: false}
+    icon: stretch
     bct_code: "8.3"
     bct_name: "Habit formation"
     rationale: "Same time, same place: repetition in a stable context makes it automatic."
@@ -210,6 +232,8 @@ actions:
       en: "30-minute brisk walk or bike ride at your usual time"
       ar: "مشي سريع أو ركوب دراجة لمدة 30 دقيقة في وقتك المعتاد"
       ar_reviewed: false
+    simple: {en: "Walk fast or ride a bike for 30 minutes at your usual time.", ar: "امشِ بسرعة أو اركب دراجة 30 دقيقة في وقتك المعتاد.", ar_reviewed: false}
+    icon: walk
     bct_code: "8.3"
     bct_name: "Habit formation"
     rationale: "Repeating the same routine in the same context turns it into a habit."
@@ -228,6 +252,8 @@ actions:
       en: "Set an alarm to get up at the same time tomorrow (within 30 minutes)"
       ar: "اضبط منبهًا لتستيقظ غدًا في نفس الوقت (بفارق لا يزيد عن 30 دقيقة)"
       ar_reviewed: false
+    simple: {en: "Set an alarm to wake up at the same time tomorrow.", ar: "اضبط المنبه لتستيقظ غداً في نفس الوقت.", ar_reviewed: false}
+    icon: clock
     bct_code: "1.4"
     bct_name: "Action planning"
     rationale: "A steady wake time is the simplest anchor for better sleep."
@@ -245,6 +271,8 @@ actions:
       en: "Start a 15-minute wind-down routine before bed"
       ar: "ابدأ روتينًا للاسترخاء لمدة 15 دقيقة قبل النوم"
       ar_reviewed: false
+    simple: {en: "Calm down for 15 minutes before bed.", ar: "استرخِ 15 دقيقة قبل النوم.", ar_reviewed: false}
+    icon: moon
     bct_code: "8.3"
     bct_name: "Habit formation"
     rationale: "Doing the same calm steps each night tells your body it's time to sleep."
@@ -262,6 +290,8 @@ actions:
       en: "Get 10 minutes of daylight within an hour of waking"
       ar: "تعرّض لضوء النهار 10 دقائق خلال ساعة من استيقاظك"
       ar_reviewed: false
+    simple: {en: "Get 10 minutes of daylight soon after you wake up.", ar: "اخرج إلى ضوء النهار 10 دقائق بعد أن تستيقظ.", ar_reviewed: false}
+    icon: sun
     bct_code: "1.4"
     bct_name: "Action planning"
     rationale: "Morning light helps set your body clock, which makes evenings easier."
@@ -279,6 +309,8 @@ actions:
       en: "No screens for 30 minutes before bed; set a phone reminder as your cue"
       ar: "لا شاشات قبل النوم بـ30 دقيقة؛ اضبط تذكيرًا على هاتفك"
       ar_reviewed: false
+    simple: {en: "No screens for 30 minutes before bed. Set a phone reminder.", ar: "لا شاشات قبل النوم بنصف ساعة. ضع تذكيراً في هاتفك.", ar_reviewed: false}
+    icon: phone_off
     bct_code: "7.1"
     bct_name: "Prompts/cues"
     rationale: "A reminder at the right moment makes the switch-off easier to remember."
@@ -296,6 +328,8 @@ actions:
       en: "Keep the same bed and wake time on 6 of 7 nights; tick each night"
       ar: "حافظ على نفس وقت النوم والاستيقاظ 6 ليالٍ من 7، وسجّل كل ليلة"
       ar_reviewed: false
+    simple: {en: "Go to bed and wake up at the same times on 6 of 7 nights. Tick each night.", ar: "نَم واستيقظ في نفس الوقت 6 ليالٍ من 7. سجّل كل ليلة.", ar_reviewed: false}
+    icon: bed
     bct_code: "2.3"
     bct_name: "Self-monitoring of behaviour"
     rationale: "Tracking your schedule helps you keep it steady, the core of good sleep."
@@ -305,3 +339,548 @@ actions:
     low_energy_ok: true
     pregnancy_safe: true
     duration_min: 1
+
+  # ================= Task 05 Part B: nutrition, smoking, recovery =================
+  # No calorie or weight numbers, no medicines or nicotine products, no treatment claims (tested).
+
+  # ---------------- nutrition ----------------
+  - id: nu_t1_water_meals
+    behaviour: nutrition
+    tier: 1
+    title: {en: "Drink a glass of water with each meal", ar: "اشرب كوباً من الماء مع كل وجبة", ar_reviewed: false}
+    simple: {en: "Drink water when you eat.", ar: "اشرب الماء عندما تأكل.", ar_reviewed: false}
+    icon: water
+    bct_code: "7.1"
+    bct_name: "Prompts/cues"
+    rationale: "Linking a small step to meals you already have makes it easy to remember."
+    limits: "General guidance, not medical advice. If you have diabetes, are pregnant or take medicines, check diet changes with your doctor."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 1
+
+  - id: nu_t1_home_food
+    behaviour: nutrition
+    tier: 1
+    title: {en: "Plan one meal from food already in your kitchen", ar: "خطط لوجبة واحدة مما لديك في مطبخك", ar_reviewed: false}
+    simple: {en: "Make one meal with food you have.", ar: "حضّر وجبة مما لديك.", ar_reviewed: false}
+    icon: basket
+    tags: [no_shopping]
+    bct_code: "1.4"
+    bct_name: "Action planning"
+    rationale: "When healthy food is hard to buy nearby, starting from what you have keeps the habit going."
+    limits: "General guidance, not medical advice. If you have diabetes, are pregnant or take medicines, check diet changes with your doctor."
+    setting: indoor
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 5
+
+  - id: nu_t1_suhoor_water
+    behaviour: nutrition
+    tier: 1
+    title: {en: "Drink water at suhoor and between iftar and sleep", ar: "اشرب الماء في السحور وبين الإفطار والنوم", ar_reviewed: false}
+    simple: {en: "Drink water at suhoor and after iftar.", ar: "اشرب الماء في السحور وبعد الإفطار.", ar_reviewed: false}
+    icon: water
+    tags: [ramadan_only]
+    bct_code: "7.1"
+    bct_name: "Prompts/cues"
+    rationale: "During Ramadan, the hours between iftar and suhoor are when water counts."
+    limits: "General guidance, not medical advice. If you have diabetes, are pregnant or take medicines, check fasting and diet with your doctor."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 1
+
+  - id: nu_t2_add_veg
+    behaviour: nutrition
+    tier: 2
+    title: {en: "Add one vegetable or piece of fruit to a meal", ar: "أضف خضاراً أو قطعة فاكهة إلى إحدى الوجبات", ar_reviewed: false}
+    simple: {en: "Add one more fruit or vegetable to a meal today.", ar: "أضف فاكهة أو خضاراً اليوم.", ar_reviewed: false}
+    icon: fruit
+    bct_code: "1.4"
+    bct_name: "Action planning"
+    rationale: "Adding something is easier than cutting something out."
+    limits: "General guidance, not medical advice. If you have diabetes, are pregnant or take medicines, check diet changes with your doctor."
+    setting: any
+    fasting_safe: false
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 5
+
+  - id: nu_t2_regular_meals
+    behaviour: nutrition
+    tier: 2
+    title: {en: "Eat your main meals at about the same times today", ar: "تناول وجباتك الرئيسية في أوقات متقاربة اليوم", ar_reviewed: false}
+    simple: {en: "Eat your meals at the usual times.", ar: "كُل وجباتك في أوقاتها المعتادة.", ar_reviewed: false}
+    icon: clock
+    tags: [diabetes]
+    bct_code: "8.3"
+    bct_name: "Habit formation"
+    rationale: "Regular meal times make a steady daily routine easier to keep."
+    limits: "General guidance, not medical advice. If you have diabetes or take medicines, follow your doctor's advice on meals."
+    setting: any
+    fasting_safe: false
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 5
+
+  - id: nu_t2_iftar_veg
+    behaviour: nutrition
+    tier: 2
+    title: {en: "At iftar, start with a salad or vegetable soup", ar: "ابدأ إفطارك بسلطة أو شوربة خضار", ar_reviewed: false}
+    simple: {en: "Start iftar with salad or soup.", ar: "ابدأ الإفطار بسلطة أو شوربة.", ar_reviewed: false}
+    icon: plate
+    tags: [ramadan_only]
+    bct_code: "1.4"
+    bct_name: "Action planning"
+    rationale: "A light start at iftar is a simple, familiar step."
+    limits: "General guidance, not medical advice. If you have diabetes, are pregnant or take medicines, check fasting and diet with your doctor."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 10
+
+  - id: nu_t3_swap_drink
+    behaviour: nutrition
+    tier: 3
+    title: {en: "Swap one sugary drink for water, laban or unsweetened tea", ar: "استبدل مشروباً سكرياً واحداً بالماء أو اللبن أو الشاي بدون سكر", ar_reviewed: false}
+    simple: {en: "Have water instead of one sweet drink.", ar: "اشرب الماء بدل مشروب حلو.", ar_reviewed: false}
+    icon: cup
+    tags: [diabetes]
+    bct_code: "8.2"
+    bct_name: "Behavior substitution"
+    rationale: "Replacing a habit is easier than stopping it."
+    limits: "General guidance, not medical advice. If you have diabetes, are pregnant or take medicines, check diet changes with your doctor."
+    setting: any
+    fasting_safe: false
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 1
+
+  - id: nu_t3_iftar_drink
+    behaviour: nutrition
+    tier: 3
+    title: {en: "Break your fast with water and dates, not a sugary drink", ar: "افطر على الماء والتمر بدل المشروب السكري", ar_reviewed: false}
+    simple: {en: "At iftar, have water, not a sweet drink.", ar: "عند الإفطار اشرب الماء بدل المشروب الحلو.", ar_reviewed: false}
+    icon: cup
+    tags: [ramadan_only, not_for_diabetes]
+    bct_code: "8.2"
+    bct_name: "Behavior substitution"
+    rationale: "Water and dates are a traditional way to break the fast."
+    limits: "General guidance, not medical advice. If you have diabetes, are pregnant or take medicines, check fasting and diet with your doctor."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 1
+
+  - id: nu_t3_iftar_water_first
+    behaviour: nutrition
+    tier: 3
+    title: {en: "Break your fast with water first, then your meal", ar: "افطر على الماء أولاً ثم تناول وجبتك", ar_reviewed: false}
+    simple: {en: "At iftar, drink water first.", ar: "عند الإفطار، اشرب الماء أولاً.", ar_reviewed: false}
+    icon: water
+    tags: [ramadan_only, diabetes]
+    bct_code: "8.2"
+    bct_name: "Behavior substitution"
+    rationale: "Starting with water instead of a sweet drink is a simple swap at iftar."
+    limits: "General guidance, not medical advice. With diabetes, check fasting and iftar choices with your doctor."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 1
+
+  - id: nu_t4_home_meal
+    behaviour: nutrition
+    tier: 4
+    title: {en: "Cook one simple meal at home (we'll suggest a recipe)", ar: "حضّر وجبة بسيطة في المنزل (سنقترح وصفة)", ar_reviewed: false}
+    simple: {en: "Cook one meal at home.", ar: "اطبخ وجبة في البيت.", ar_reviewed: false}
+    icon: cook
+    tags: [cooking]
+    bct_code: "1.4"
+    bct_name: "Action planning"
+    rationale: "Cooking at home lets you choose what goes in, at your own pace."
+    limits: "General guidance, not medical advice. If you have diabetes, are pregnant or take medicines, check diet changes with your doctor."
+    setting: indoor
+    fasting_safe: false
+    low_energy_ok: false
+    pregnancy_safe: true
+    duration_min: 30
+
+  - id: nu_t4_iftar_home_meal
+    behaviour: nutrition
+    tier: 4
+    title: {en: "Cook a simple home iftar (we'll suggest a recipe)", ar: "حضّر إفطاراً بسيطاً في المنزل (سنقترح وصفة)", ar_reviewed: false}
+    simple: {en: "Cook iftar at home.", ar: "اطبخ الإفطار في البيت.", ar_reviewed: false}
+    icon: cook
+    tags: [ramadan_only, cooking]
+    bct_code: "1.4"
+    bct_name: "Action planning"
+    rationale: "A home iftar lets you choose what goes on the table."
+    limits: "General guidance, not medical advice. If you have diabetes, are pregnant or take medicines, check fasting and diet with your doctor."
+    setting: indoor
+    fasting_safe: true
+    low_energy_ok: false
+    pregnancy_safe: true
+    duration_min: 30
+
+  # ---------------- smoking (reduce, then quit) ----------------
+  - id: sm_t1_delay_first
+    behaviour: smoking
+    tier: 1
+    title: {en: "Wait 15 minutes before your first cigarette of the day", ar: "انتظر 15 دقيقة قبل أول سيجارة في يومك", ar_reviewed: false}
+    simple: {en: "Wait a little before your first cigarette.", ar: "انتظر قليلاً قبل أول سيجارة.", ar_reviewed: false}
+    icon: clock
+    bct_code: "8.7"
+    bct_name: "Graded tasks"
+    rationale: "Small delays loosen the automatic link between waking up and smoking."
+    limits: "This plan doesn't use medicines or nicotine products. For help quitting, talk to a doctor or pharmacist."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 15
+
+  - id: sm_t1_substitute
+    behaviour: smoking
+    tier: 1
+    title: {en: "When a craving comes, sip water or walk for 5 minutes, then decide", ar: "عندما تأتي الرغبة، اشرب الماء أو امشِ 5 دقائق ثم قرّر", ar_reviewed: false}
+    simple: {en: "Feel a craving? Drink water and wait.", ar: "تشعر برغبة؟ اشرب الماء وانتظر.", ar_reviewed: false}
+    icon: hand
+    tags: [substitution]
+    bct_code: "8.2"
+    bct_name: "Behavior substitution"
+    rationale: "Cravings usually fade within minutes; a short swap helps you ride one out."
+    limits: "This plan doesn't use medicines or nicotine products. For help quitting, talk to a doctor or pharmacist."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 5
+
+  - id: sm_t1_avoid_cue
+    behaviour: smoking
+    tier: 1
+    title: {en: "Take one break away from your usual smoking spot", ar: "خذ استراحة واحدة بعيداً عن مكان تدخينك المعتاد", ar_reviewed: false}
+    simple: {en: "Take one break in a smoke-free place.", ar: "خذ استراحة في مكان بلا تدخين.", ar_reviewed: false}
+    icon: door
+    tags: [cue_avoidance]
+    bct_code: "12.3"
+    bct_name: "Avoidance/reducing exposure to cues for the behavior"
+    rationale: "Places and people who smoke are strong cues; stepping away makes not smoking easier."
+    limits: "This plan doesn't use medicines or nicotine products. For help quitting, talk to a doctor or pharmacist."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 10
+
+  - id: sm_t1_iftar_wait
+    behaviour: smoking
+    tier: 1
+    title: {en: "After iftar, wait 15 minutes before the first cigarette", ar: "بعد الإفطار، انتظر 15 دقيقة قبل أول سيجارة", ar_reviewed: false}
+    simple: {en: "After iftar, wait before you smoke.", ar: "بعد الإفطار، انتظر قبل التدخين.", ar_reviewed: false}
+    icon: clock
+    tags: [ramadan_only]
+    bct_code: "8.7"
+    bct_name: "Graded tasks"
+    rationale: "You already go all day without smoking; a few more minutes builds on that."
+    limits: "This plan doesn't use medicines or nicotine products. For help quitting, talk to a doctor or pharmacist."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 15
+
+  - id: sm_t2_one_fewer
+    behaviour: smoking
+    tier: 2
+    title: {en: "Smoke one cigarette fewer than usual today", ar: "دخّن سيجارة واحدة أقل من المعتاد اليوم", ar_reviewed: false}
+    simple: {en: "Smoke one less today.", ar: "دخّن سيجارة أقل اليوم.", ar_reviewed: false}
+    icon: no_smoking
+    bct_code: "1.1"
+    bct_name: "Goal setting (behavior)"
+    rationale: "A small, clear target you can reach today."
+    limits: "This plan doesn't use medicines or nicotine products. For help quitting, talk to a doctor or pharmacist."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 1
+
+  - id: sm_t3_smoke_free_hour
+    behaviour: smoking
+    tier: 3
+    title: {en: "Keep one hour smoke-free today, for example after a meal", ar: "اجعل ساعة واحدة اليوم بلا تدخين، مثلاً بعد الوجبة", ar_reviewed: false}
+    simple: {en: "Have one hour with no smoking.", ar: "ساعة واحدة بلا تدخين.", ar_reviewed: false}
+    icon: clock
+    bct_code: "1.4"
+    bct_name: "Action planning"
+    rationale: "Planning when you won't smoke turns intention into a routine."
+    limits: "This plan doesn't use medicines or nicotine products. For help quitting, talk to a doctor or pharmacist."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 60
+
+  - id: sm_t3_iftar_free_hour
+    behaviour: smoking
+    tier: 3
+    title: {en: "Keep the hour after iftar smoke-free", ar: "اجعل الساعة بعد الإفطار بلا تدخين", ar_reviewed: false}
+    simple: {en: "No smoking for an hour after iftar.", ar: "لا تدخين لساعة بعد الإفطار.", ar_reviewed: false}
+    icon: clock
+    tags: [ramadan_only]
+    bct_code: "1.4"
+    bct_name: "Action planning"
+    rationale: "The hour after iftar is a common trigger; planning it helps."
+    limits: "This plan doesn't use medicines or nicotine products. For help quitting, talk to a doctor or pharmacist."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 60
+
+  - id: sm_t4_smoke_free_day
+    behaviour: smoking
+    tier: 4
+    title: {en: "Try one smoke-free day", ar: "جرّب يوماً كاملاً بلا تدخين", ar_reviewed: false}
+    simple: {en: "Try one day with no smoking.", ar: "جرّب يوماً بلا تدخين.", ar_reviewed: false}
+    icon: no_smoking
+    bct_code: "1.1"
+    bct_name: "Goal setting (behavior)"
+    rationale: "One full day shows you it can be done; a slip just means a smaller step tomorrow."
+    limits: "This plan doesn't use medicines or nicotine products. For help quitting, talk to a doctor or pharmacist."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 1
+
+  # ---------------- recovery (rest and stress, not mental-health care) ----------------
+  - id: rc_t1_breathing
+    behaviour: recovery
+    tier: 1
+    title: {en: "Take a 2-minute breathing break", ar: "خذ استراحة تنفس لمدة دقيقتين", ar_reviewed: false}
+    simple: {en: "Breathe slowly for 2 minutes.", ar: "تنفّس ببطء لمدة دقيقتين.", ar_reviewed: false}
+    icon: breath
+    bct_code: "11.2"
+    bct_name: "Reduce negative emotions"
+    rationale: "A short pause with slow breathing helps you reset during a busy day."
+    limits: "These are rest steps, not treatment. If you feel low for a long time or think about harming yourself, talk to someone you trust or call 800 SAKINA (800 725462)."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 2
+
+  - id: rc_t1_rest_after_illness
+    behaviour: recovery
+    tier: 1
+    title: {en: "Rest for 10 minutes, sitting or lying comfortably", ar: "استرح 10 دقائق جالساً أو مستلقياً براحة", ar_reviewed: false}
+    simple: {en: "Rest for 10 minutes.", ar: "استرح 10 دقائق.", ar_reviewed: false}
+    icon: rest
+    tags: [after_illness]
+    bct_code: "11.2"
+    bct_name: "Reduce negative emotions"
+    rationale: "After illness or injury, planned rest is part of getting back to your routine."
+    limits: "These are rest steps, not treatment. Follow your doctor's advice about recovery."
+    setting: indoor
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 10
+
+  - id: rc_t2_screen_free
+    behaviour: recovery
+    tier: 2
+    title: {en: "Spend 15 minutes without screens", ar: "اقضِ 15 دقيقة بدون شاشات", ar_reviewed: false}
+    simple: {en: "Put your phone away for 15 minutes.", ar: "ضع هاتفك جانباً 15 دقيقة.", ar_reviewed: false}
+    icon: phone_off
+    bct_code: "12.1"
+    bct_name: "Restructuring the physical environment"
+    rationale: "A short break from screens gives your mind a real pause."
+    limits: "These are rest steps, not treatment. If you feel low for a long time or think about harming yourself, talk to someone you trust or call 800 SAKINA (800 725462)."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 15
+
+  - id: rc_t3_planned_rest
+    behaviour: recovery
+    tier: 3
+    title: {en: "After a hard day, plan a lighter evening", ar: "بعد يوم صعب، خطط لمساء أخف", ar_reviewed: false}
+    simple: {en: "After a hard day, rest in the evening.", ar: "بعد يوم صعب، استرح في المساء.", ar_reviewed: false}
+    icon: moon
+    bct_code: "1.4"
+    bct_name: "Action planning"
+    rationale: "Planning rest ahead makes it happen instead of being squeezed out."
+    limits: "These are rest steps, not treatment. If you feel low for a long time or think about harming yourself, talk to someone you trust or call 800 SAKINA (800 725462)."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 10
+
+  - id: rc_t4_daylight
+    behaviour: recovery
+    tier: 4
+    title: {en: "Spend 10 minutes outside in daylight, walking or sitting", ar: "اقضِ 10 دقائق في ضوء النهار ماشياً أو جالساً", ar_reviewed: false}
+    simple: {en: "Go outside in daylight for 10 minutes.", ar: "اخرج في ضوء النهار 10 دقائق.", ar_reviewed: false}
+    icon: sun
+    bct_code: "1.4"
+    bct_name: "Action planning"
+    rationale: "Daylight and a change of scene are a simple way to reset."
+    limits: "These are rest steps, not treatment. Avoid the midday heat; go early or late."
+    setting: outdoor
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 10
+
+  # ---------------- family variants (Task 05 Part E) ----------------
+  # Offered only when they fit: "family" needs a household other than alone, "family_iftar" needs family_fasting
+  # (and Ramadan), "caregiver" needs caregiver. With none of these set (every simulator persona) they never show.
+  - id: mv_t1_family_play
+    behaviour: movement
+    tier: 1
+    title: {en: "Play or walk around at home with your family for 5 minutes", ar: "العب أو امشِ في البيت مع عائلتك لمدة 5 دقائق", ar_reviewed: false}
+    simple: {en: "Move with your family at home for 5 minutes.", ar: "تحرّك مع أهلك في البيت 5 دقائق.", ar_reviewed: false}
+    icon: family
+    tags: [family]
+    bct_code: "3.1"
+    bct_name: "Social support (unspecified)"
+    rationale: "A small step done together is easier to keep up, and it fits into family time."
+    limits: "Go at a comfortable pace. Stop if you feel pain, dizziness or chest discomfort."
+    setting: indoor
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    seated_variant_id: mv_t1_seated
+    duration_min: 5
+
+  - id: mv_t2_family_walk
+    behaviour: movement
+    tier: 2
+    title: {en: "Walk with your family after maghrib for 10 minutes", ar: "امشِ مع عائلتك بعد المغرب لمدة 10 دقائق", ar_reviewed: false}
+    simple: {en: "Take a walk with your family after maghrib. Go for 10 minutes.", ar: "بعد المغرب، امشِ مع أهلك 10 دقائق.", ar_reviewed: false}
+    icon: family
+    tags: [family]
+    bct_code: "3.1"
+    bct_name: "Social support (unspecified)"
+    rationale: "An evening walk together is cooler, social and easy to repeat."
+    limits: "Keep a pace everyone can manage. Stop if you feel pain, dizziness or chest discomfort."
+    setting: outdoor
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    seated_variant_id: mv_t2_seated
+    duration_min: 10
+
+  - id: nu_t1_family_water_jug
+    behaviour: nutrition
+    tier: 1
+    title: {en: "Put a jug of water on the table for the whole family at meals", ar: "ضع إبريق ماء على المائدة لكل العائلة في الوجبات", ar_reviewed: false}
+    simple: {en: "Put water on the table for the family at meals.", ar: "ضع الماء على مائدة أهلك عند الأكل.", ar_reviewed: false}
+    icon: water
+    tags: [family]
+    bct_code: "12.1"
+    bct_name: "Restructuring the physical environment"
+    rationale: "Water in plain sight at meals is an easy cue for everyone at the table."
+    limits: "General guidance, not medical advice. If you have diabetes, are pregnant or take medicines, check diet changes with your doctor."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 1
+
+  - id: nu_t2_family_fruit_bowl
+    behaviour: nutrition
+    tier: 2
+    title: {en: "Put a bowl of fruit or cut vegetables where the family can see it", ar: "ضع طبق فاكهة أو خضار مقطعة حيث تراه العائلة", ar_reviewed: false}
+    simple: {en: "Put fruit or vegetables out where the family can see them.", ar: "ضع فاكهة أو خضاراً أمام أهلك.", ar_reviewed: false}
+    icon: fruit
+    tags: [family]
+    bct_code: "12.1"
+    bct_name: "Restructuring the physical environment"
+    rationale: "When fruit is easy to see and reach, it becomes an easy choice for everyone."
+    limits: "General guidance, not medical advice. If you have diabetes, are pregnant or take medicines, check diet changes with your doctor."
+    setting: any
+    fasting_safe: false
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 5
+
+  - id: nu_t1_family_iftar_water
+    behaviour: nutrition
+    tier: 1
+    title: {en: "At the family iftar, put water on the table and break the fast with it together", ar: "في إفطار العائلة، ضع الماء على المائدة وأفطروا عليه معاً", ar_reviewed: false}
+    simple: {en: "At iftar, drink water first, all together.", ar: "عند الإفطار، اشربوا الماء أولاً معاً.", ar_reviewed: false}
+    icon: water
+    tags: [family_iftar, ramadan_only]
+    bct_code: "12.1"
+    bct_name: "Restructuring the physical environment"
+    rationale: "Starting iftar with water together is a small habit the whole table can share."
+    limits: "General guidance, not medical advice. If you have diabetes, are pregnant or take medicines, check fasting and diet with your doctor."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 1
+
+  - id: nu_t2_family_iftar_salad
+    behaviour: nutrition
+    tier: 2
+    title: {en: "Start the family iftar with a shared salad or vegetable soup", ar: "ابدؤوا إفطار العائلة بسلطة أو شوربة خضار للجميع", ar_reviewed: false}
+    simple: {en: "Start the family iftar with salad or soup.", ar: "ابدؤوا الإفطار معاً بسلطة أو شوربة.", ar_reviewed: false}
+    icon: plate
+    tags: [family_iftar, ramadan_only]
+    bct_code: "3.1"
+    bct_name: "Social support (unspecified)"
+    rationale: "A shared dish at the start of iftar makes the lighter choice the family's choice."
+    limits: "General guidance, not medical advice. If you have diabetes, are pregnant or take medicines, check fasting and diet with your doctor."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 10
+
+  - id: sm_t1_smoke_free_room
+    behaviour: smoking
+    tier: 1
+    title: {en: "Keep one room at home smoke-free for everyone", ar: "اجعل غرفة واحدة في البيت بلا تدخين للجميع", ar_reviewed: false}
+    simple: {en: "Do not smoke in one room at home.", ar: "لا تدخّن في غرفة واحدة من البيت.", ar_reviewed: false}
+    icon: no_smoking
+    tags: [family, cue_avoidance]
+    bct_code: "12.3"
+    bct_name: "Avoidance/reducing exposure to cues for the behavior"
+    rationale: "A smoke-free room is one place at home with no cue to smoke, for you and your family."
+    limits: "This plan doesn't use medicines or nicotine products. For help quitting, talk to a doctor or pharmacist."
+    setting: indoor
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 1
+
+  - id: rc_t1_caregiver_pause
+    behaviour: recovery
+    tier: 1
+    title: {en: "Take 5 quiet minutes for yourself while the person you care for is resting", ar: "خذ 5 دقائق هادئة لنفسك بينما يرتاح من تعتني به", ar_reviewed: false}
+    simple: {en: "When they rest, take 5 quiet minutes for you.", ar: "عندما يرتاح من ترعاه، خذ 5 دقائق لنفسك.", ar_reviewed: false}
+    icon: rest
+    tags: [caregiver]
+    bct_code: "11.2"
+    bct_name: "Reduce negative emotions"
+    rationale: "Caring for someone is tiring; a short pause is small enough to fit around it."
+    limits: "These are rest steps, not treatment. If you feel low for a long time or think about harming yourself, talk to someone you trust or call 800 SAKINA (800 725462)."
+    setting: any
+    fasting_safe: true
+    low_energy_ok: true
+    pregnancy_safe: true
+    duration_min: 5

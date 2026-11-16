@@ -7,14 +7,17 @@ from uuid import uuid4
 
 from . import config
 from .actions import default_library
+from .calendar import Calendar
 from .models import (
     Action,
     Barrier,
     Behaviour,
     CheckinResult,
+    Condition,
     ContextFlag,
     DayLog,
     DayOutcome,
+    Encouragement,
     EngagementState,
     Event,
     EventType,
@@ -26,13 +29,14 @@ from .models import (
     UserProfile,
     UserState,
 )
+from .plan import goal_order
 from .policy import (
-    BARRIER_MESSAGE,
     Bandit,
     RulesBandit,
     ThompsonBandit,
     apply_barrier,
     arm_key,
+    barrier_message,
     choose_actions,
     init_bandit_params,
     lighter_option,
@@ -126,12 +130,15 @@ class Engine:
         policy_mode: PolicyMode = "rules",
         rng: random.Random | None = None,
         risk_model: RiskModel | None = None,
+        calendar: Calendar | None = None,
     ) -> None:
         """policy_mode="rules": deterministic choice, default window (Task 01 behaviour).
         policy_mode="bandit": Thompson sampling over (action, window) arms, seeded by `rng`.
         risk_model: optional lapse-risk model (Task 02b). When risk is above its threshold and the user is still
         active, each action comes with a lighter option, plus a gentle check-in at most once per 7 days."""
         self.risk_model = risk_model
+        # Task 05 A2: Ramadan, Eid, heat and shift timings worked out per day. None (the simulator) = explicit flags only.
+        self.calendar = calendar
         if policy_mode not in ("rules", "bandit"):
             raise ValueError(f"unknown policy_mode {policy_mode!r}")
         self.store = store or InMemoryStore()
@@ -157,6 +164,7 @@ class Engine:
         )
         screening = screening_flags(profile)
         state = initial_state(profile, screening)
+        state.order = goal_order(profile)  # [movement, sleep] for anyone without Task 05 answers
         if self.policy_mode == "bandit":
             state.bandit_params = init_bandit_params(profile, self.library)
         reason = profile.history.motivation_reason
@@ -173,7 +181,8 @@ class Engine:
                 profile.user_id,
                 0,
                 EventType.screening_flag,
-                payload={"positive": screening.positive, "see_doctor": screening.see_doctor},
+                payload={"positive": screening.positive, "see_doctor": screening.see_doctor,
+                         "contraindicated": screening.contraindicated},
             )
         return OnboardResult(
             user_id=profile.user_id, state=state, screening=screening, red_flag=red_flag
@@ -192,6 +201,8 @@ class Engine:
                 self._end_day(profile, state)
             for b, h in state.habit_strength.items():
                 state.h_daily[b] = [*state.h_daily.get(b, []), h][-config.H_DAILY_KEEP :]
+            self._set_day_context(profile, state, day)  # after closing yesterday, which keeps yesterday's context
+            state.rotation += 1  # rotates extra goals beyond the daily cap (no effect with 3 goals or fewer)
             scheduled = choose_actions(profile, state, library=self.library, bandit=self.bandit)
             self._risk_hook(profile, state, scheduled, day)
             state.day = day
@@ -220,6 +231,7 @@ class Engine:
             state_summary=self._summary(state),
             risk=state.last_risk,
             risk_reasons=state.last_risk_reasons,
+            encouragement=state.encouragement if state.encouragement and state.encouragement.day == day else None,
         )
 
     def record(self, event: Event) -> UserState:
@@ -237,6 +249,7 @@ class Engine:
 
         self._apply_outcome(profile, state, action, DayOutcome(event.type), event.day)
         self.store.append_event(event)
+        self._encourage(profile, state, action, event.day)  # before _end_day, so a comeback still sees the slip
         # The user may have taken today's lighter option instead of the shown action: it answers that action.
         answered = action.id
         if answered not in state.pending:
@@ -294,6 +307,29 @@ class Engine:
         self.store.save_state(state)
         return state
 
+    def refresh_context(self, user_id: str) -> UserState:
+        """Re-read the calendar for today (e.g. after "Ramadan started today") and re-choose today's still-open
+        actions, so a fasting user isn't left with a step that isn't fasting-safe."""
+        profile, state = self._load(user_id)
+        if self.calendar is None or state.day < 1:
+            return state
+        self._set_day_context(profile, state, state.day)
+        for s in choose_actions(profile, state, library=self.library, bandit=self.bandit):
+            old = next((i for i in state.pending if self._by_id[i].behaviour == s.action.behaviour), None)
+            if old is None:
+                continue
+            shown = next(((w, h) for i, w, h in state.shown_today if i == old), None)
+            if old == s.action.id and shown == (s.time_window, s.hour):
+                continue
+            state.pending[state.pending.index(old)] = s.action.id
+            state.shown_today = [
+                (s.action.id, s.time_window, s.hour) if i == old else (i, w, h) for i, w, h in state.shown_today
+            ]
+            self._log(user_id, state.day, EventType.action_shown, action_id=s.action.id,
+                      payload={"window": s.time_window.value, "hour": s.hour, "replaces": old})
+        self.store.save_state(state)
+        return state
+
     def get_state(self, user_id: str) -> UserState:
         return self.store.get_state(user_id)
 
@@ -315,6 +351,8 @@ class Engine:
             outcome = DayOutcome.paused
         elif ContextFlag.illness in state.context_flags:
             outcome = DayOutcome.illness
+        elif ContextFlag.eid in state.auto_flags and outcome in (DayOutcome.skipped, DayOutcome.no_response):
+            outcome = DayOutcome.paused  # Eid is rest-friendly: a missed step doesn't count
         b = action.behaviour
         state.habit_strength[b] = update_habit_strength(state.habit_strength[b], outcome)
         state.history.append(DayLog(day=day, behaviour=b, action_id=action.id, outcome=outcome))
@@ -374,6 +412,9 @@ class Engine:
         if new == state.engagement_state:
             return
         shrink_on_slip(state, new)
+        slipping = (EngagementState.drifting, EngagementState.lapsed)
+        if new in slipping and state.engagement_state not in slipping:
+            state.slip_day = state.day  # a later completion is a comeback (Part C)
         state.checkin_due = new in (EngagementState.drifting, EngagementState.lapsed)
         if state.checkin_due and state.last_checkin_sent_day != state.day:  # at most one check-in message a day
             self._log(state.user_id, state.day, EventType.checkin_sent, payload={"state": new.value})
@@ -409,15 +450,69 @@ class Engine:
             keys.append("see_doctor")
         elif screening.flag:
             keys.append("check_with_doctor")
+        if Behaviour.nutrition in state.current_tier and (
+            Condition.diabetes in profile.conditions.managing or screening.pregnancy_safe_only
+        ):
+            keys.append("diet_check_with_doctor")
         if state.red_flag and ContextFlag.paused in state.context_flags:
             keys.append("seek_care")
         if state.last_barrier is not None:
-            keys.append(BARRIER_MESSAGE[state.last_barrier])
+            keys.append(barrier_message(profile, state.last_barrier))
             if state.last_barrier == Barrier.low_motivation:
                 keys.append("buddy_offer")
         if state.lighter_offers:
             keys.append("lighter_option")  # "Busy week ahead? Here's a lighter version"
+        if ContextFlag.eid in state.auto_flags:
+            keys.append("eid_rest")
         return keys
+
+    def _encourage(self, profile: UserProfile, state: UserState, action: Action, day: int) -> None:
+        """Task 05 Part C. A real moment after a completion, at most one a day, highest priority first. Never while
+        paused or after a red flag, never if turned off. Observation only: it doesn't change what's chosen."""
+        outcome = state.history[-1].outcome  # after paused/illness/Eid conversion
+        done = outcome in (DayOutcome.completed, DayOutcome.partial)
+        new_action = done and action.id not in state.done_actions
+        if done:
+            state.done_actions.add(action.id)
+        if (not done or not profile.preferences.encouragement or state.red_flag
+                or ContextFlag.paused in state.context_flags or state.moments.get("_any") == day):
+            return
+        seen = state.moments
+        done_days = {d.day for d in state.history if d.outcome in (DayOutcome.completed, DayOutcome.partial)}
+        b = action.behaviour
+        candidates: list[tuple[str, str, Behaviour | None]] = [  # (moment, key in `seen`, behaviour)
+            ("comeback", "comeback", None),
+            ("first_day_done", "first_day_done", None),
+            ("habit_strength_50", f"habit_strength_50:{b.value}", b),
+            ("first_week_done", "first_week_done", None),
+            ("three_good_days", "three_good_days", None),
+            ("tried_something_new", "tried_something_new", b),
+        ]
+        fits = {
+            "comeback": state.engagement_state in (EngagementState.drifting, EngagementState.lapsed)
+            and seen.get("comeback", -1) < state.slip_day,
+            "first_day_done": "first_day_done" not in seen,
+            "habit_strength_50": state.habit_strength[b] >= config.ENCOURAGE_HABIT_STRENGTH
+            and f"habit_strength_50:{b.value}" not in seen,
+            "first_week_done": day >= config.ENCOURAGE_FIRST_WEEK_DAY and "first_week_done" not in seen,
+            "three_good_days": "three_good_days" not in seen
+            and all(d in done_days for d in range(day - config.ENCOURAGE_GOOD_DAYS + 1, day + 1)),
+            "tried_something_new": new_action and "first_day_done" in seen,
+        }
+        pick = next(((m, k, beh) for m, k, beh in candidates if fits[m]), None)
+        if pick is None:
+            return
+        moment, key, behaviour = pick
+        seen[key] = seen["_any"] = day
+        state.encouragement = Encouragement(moment=moment, day=day, behaviour=behaviour)
+        payload = {"moment": moment, **({"behaviour": behaviour.value} if behaviour else {})}
+        self._log(state.user_id, day, EventType.encouragement, payload=payload)
+
+    def _set_day_context(self, profile: UserProfile, state: UserState, day: int) -> None:
+        if self.calendar is None:
+            return
+        ctx = self.calendar.day(profile, day)
+        state.auto_flags, state.iftar_hour, state.day_times = set(ctx.flags), ctx.iftar_hour, ctx.day_times
 
     @staticmethod
     def _summary(state: UserState) -> StateSummary:

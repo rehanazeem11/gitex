@@ -10,7 +10,10 @@ from .models import (
     ActionSetting,
     Barrier,
     Behaviour,
+    Condition,
     Context,
+    ContextFlag,
+    Household,
     PlaceSetting,
     UserProfile,
     UserState,
@@ -19,6 +22,12 @@ from .safety import SCREENING_QUESTIONS, context_filter, screening_flags
 
 # shortcut: path works for the editable install only; move data/ into the package before building a wheel.
 DEFAULT_LIBRARY_PATH = Path(__file__).resolve().parent.parent / "data" / "actions.yaml"
+
+# Fixed icon keys the frontend maps to pictures (Task 05; every action gets one in Part D).
+ICONS = frozenset({
+    "walk", "stretch", "seat", "balance", "moon", "sun", "bed", "water", "plate", "fruit", "cup", "cook",
+    "basket", "clock", "no_smoking", "hand", "door", "breath", "phone_off", "rest", "family",
+})
 
 
 def load_actions(path: Path | str = DEFAULT_LIBRARY_PATH) -> list[Action]:
@@ -47,6 +56,8 @@ def _validate_library(actions: list[Action]) -> None:
         unknown = set(a.contraindications) - set(SCREENING_QUESTIONS)
         if unknown:
             raise ValueError(f"{a.id}: unknown contraindications {sorted(unknown)}")
+        if a.icon is not None and a.icon not in ICONS:
+            raise ValueError(f"{a.id}: unknown icon {a.icon!r}")
     # Every behaviour needs a tier-1 action that survives every safety filter, so a plan is never empty.
     for b in Behaviour:
         if not any(_safe_floor(a) for a in actions if a.behaviour == b):
@@ -65,6 +76,10 @@ def _safe_floor(a: Action) -> bool:
     )
 
 
+def lives_with_family(profile: UserProfile) -> bool:
+    return profile.preferences.household not in (None, Household.alone)
+
+
 def filter_actions(
     profile: UserProfile,
     state: UserState,
@@ -74,6 +89,23 @@ def filter_actions(
     """Actions this user may get right now: goals, then safety, then plan adjustments from check-ins."""
     actions = [a for a in (library or default_library()) if a.behaviour in profile.basics.goals]
     actions = context_filter(actions, context.flags, context.hour, screening_flags(profile))
+    if ContextFlag.ramadan not in context.flags:
+        actions = [a for a in actions if "ramadan_only" not in a.tags]  # suhoor/iftar variants
+    managing = profile.conditions.managing
+    recovering = Condition.recovering_from_illness_or_injury in managing or ContextFlag.illness in context.flags
+    actions = [
+        a for a in actions
+        if ("after_illness" not in a.tags or recovering)  # rest-after-illness only when it fits
+        and ("not_for_diabetes" not in a.tags or Condition.diabetes not in managing)  # e.g. dates at iftar
+    ]
+    # Task 05 Part E: family variants only when they fit, so an unset household (the simulator) changes nothing.
+    prefs = profile.preferences
+    actions = [
+        a for a in actions
+        if ("family" not in a.tags or lives_with_family(profile))
+        and ("family_iftar" not in a.tags or prefs.family_fasting)
+        and ("caregiver" not in a.tags or prefs.caregiver)
+    ]
     if state.prefer_indoor or profile.preferences.setting == PlaceSetting.indoor:
         actions = [a for a in actions if a.setting != ActionSetting.outdoor]
     if state.last_barrier == Barrier.energy_fatigue:
